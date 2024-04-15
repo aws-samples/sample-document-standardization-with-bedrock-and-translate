@@ -33,12 +33,27 @@ export class DocProcessingStack extends cdk.Stack {
 
     // SNS Topic
     const resultTopic = new sns.Topic(this, 'ResultTopic');
+    
+    // Define the Lambda layer
+    const LambdaLayer = new lambda.LayerVersion(this, 'LambdaLayer', {
+      code: lambda.Code.fromAsset('../DocProcessing/layer.zip'), 
+      compatibleRuntimes: [lambda.Runtime.PYTHON_3_9],
+      description: 'A layer for python-docx',
+    });
+    
+    // Define the AWS SDK layer containing Pandas
+    const awsSdkPandasLayer = lambda.LayerVersion.fromLayerVersionArn(
+      this,
+      'AWSSDKPandasLayer',
+      'arn:aws:lambda:eu-west-1:336392948345:layer:AWSSDKPandas-Python39:19'
+    );
 
     // Lambda function
     const processingLambda = new lambda.Function(this, 'ProcessingLambda', {
-      runtime: lambda.Runtime.PYTHON_3_8,
+      runtime: lambda.Runtime.PYTHON_3_9,
       handler: 'processor.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, 'lambda')),
+      layers: [LambdaLayer, awsSdkPandasLayer],
       environment: {
         OUTPUT_BUCKET: outputBucket.bucketName,
       }
@@ -47,6 +62,16 @@ export class DocProcessingStack extends cdk.Stack {
     // Permission to read and write S3 buckets
     inputBucket.grantRead(processingLambda);
     outputBucket.grantWrite(processingLambda);
+    
+    // Create a policy statement that allows invoking the Bedrock service
+    const bedrockPolicy = new iam.PolicyStatement({
+      actions: ['bedrock:InvokeModel'], // Modify based on actual service actions
+      resources: ['*'], // Specify more restrictive resource ARNs as needed
+    });
+    
+    // Attach the policy to the Lambda function's role
+    processingLambda.addToRolePolicy(bedrockPolicy);
+
 
     // Define the Step Functions state machine
     const lambdaTask = new tasks.LambdaInvoke(this, 'Invoke Processing Lambda', {

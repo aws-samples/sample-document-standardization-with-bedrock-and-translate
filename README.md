@@ -17,8 +17,26 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 ## Deploying the Solution
 1. Create a new environment in Cloud9 with an m5.large instance.
 2. Clone the repo
-3. Go to the project's root folder and run ```cdk synth``` followed by ```cdk deploy```
+3. From the root of the directory run the following commands: 
+```cd DocProcessing/lib/lambda/``` 
+```pip install python-docx -t .```
+```cd ../..```
+ ```cdk synth```
+```cdk deploy```
 
 ## Subscribing to the SNS Topic
 After the solution is deployed, an SNS topic will be created. Create a subscription to this topic using a protocol and endpoint of your choice (this can be done via the AWS Management console)
 * When using an email endpoint, you will receive an email asking to confirm the subscription
+* 
+
+## Request Access to Claud
+1. If you have not already, request access to Claudev2.1 via the Amazon Bedrock Console
+2. 
+
+
+## to check
+* do people need to run:
+```docker build -t lambda-layer-builder .
+docker create --name lambda-layer-extractor lambda-layer-builder
+docker cp lambda-layer-extractor:/output/layer.zip .
+docker rm lambda-layer-extractor```
