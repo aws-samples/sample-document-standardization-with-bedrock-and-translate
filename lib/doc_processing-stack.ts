@@ -47,16 +47,23 @@ export class DocProcessingStack extends cdk.Stack {
       'AWSSDKPandasLayer',
       'arn:aws:lambda:eu-west-1:336392948345:layer:AWSSDKPandas-Python39:19'
     );
+    
+    const pandoc_layer = new lambda.LayerVersion(this, 'PandocLayer', {
+      code: lambda.Code.fromAsset('../DocProcessing/pandoc-layer/pandoc-layer.zip'),
+      compatibleRuntimes: [lambda.Runtime.PYTHON_3_9],
+      description: "A layer that contains the Pandoc binary"
+    });
 
     // Lambda function
     const processingLambda = new lambda.Function(this, 'ProcessingLambda', {
       runtime: lambda.Runtime.PYTHON_3_9,
       handler: 'processor.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, 'lambda')),
-      layers: [LambdaLayer, awsSdkPandasLayer],
+      layers: [LambdaLayer, awsSdkPandasLayer, pandoc_layer],
       environment: {
         OUTPUT_BUCKET: outputBucket.bucketName,
-      }
+      },
+      timeout: cdk.Duration.minutes(10),
     });
 
     // Permission to read and write S3 buckets
@@ -85,7 +92,7 @@ export class DocProcessingStack extends cdk.Stack {
 
     const publishFailure = new tasks.SnsPublish(this, 'Publish Failure', {
       topic: resultTopic,
-      message: sfn.TaskInput.fromJsonPathAt('$.Payload.error'),  
+      message: sfn.TaskInput.fromJsonPathAt('$.Payload.body'),  
     });
 
 
