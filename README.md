@@ -23,15 +23,26 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 ```cd ../..```
  ```cdk synth```
 ```cdk deploy```
+4. Make any relevant changes to the styling of the ```custom-reference.docx``` doc (you will need to open it in word and then re-upload to the repo after you've made the changes).
+* Any changes you make will need to be made via the Style panes tab in order to propogate to the final output docx. Just changing text size / color will not work.
 
 ## Subscribing to the SNS Topic
-After the solution is deployed, an SNS topic will be created. Create a subscription to this topic using a protocol and endpoint of your choice (this can be done via the AWS Management console)
-* When using an email endpoint, you will receive an email asking to confirm the subscription
-* 
+After the solution is deployed, an SNS topic will be created. Create a subscription to this topic using a protocol and endpoint of your choice (this can be done via the AWS Management console). Make sure to confirm the subscription before testing the workflow.
 
-## Request Access to Claud
-1. If you have not already, request access to Claudev2.1 via the Amazon Bedrock Console
-2. 
+## Request Access to Claude
+If you have not already, request access to Claudev2.1 via the Amazon Bedrock Console
+
+##Assumptions
+This workflow assumes the following:
+* You are uploading a docx file
+* You would like a docx file as your final output
+* Your document has a Title and Subtitle, with no body text above them.
+* If your document only has a title update the ```extract_first_two_paragraphs(local_input_path)``` function accordingly.
+* If your title is in Header 1 format, remove the following lines of code: 
+* ```title, subtitle = extract_first_two_paragraphs(local_input_path)```
+* ```subtitle_para = doc.paragraphs[0].insert_paragraph_before(subtitle, style='Subtitle')```
+* ```title_para = doc.paragraphs[0].insert_paragraph_before(title, style='Title')```
+
 
 
 ## to check
