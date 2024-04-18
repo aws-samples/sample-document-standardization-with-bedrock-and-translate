@@ -18,6 +18,7 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 1. Create a new environment in Cloud9 with an m5.large instance.
 2. Clone the repo
 3. From the root of the directory run the following commands: 
+
     ```cd DocProcessing/lib/lambda/``` 
     ```pip install python-docx -t .```
     ```cd ../..```
@@ -33,6 +34,7 @@ After the solution is deployed, an SNS topic will be created. Create a subscript
 If you have not already, request access to Claudev2.1 via the Amazon Bedrock Console
 
 ##Assumptions
+
 This workflow assumes the following:
 * You are uploading a docx file
 * You would like a docx file as your final output
@@ -43,7 +45,10 @@ This workflow assumes the following:
     * ```subtitle_para = doc.paragraphs[0].insert_paragraph_before(subtitle, style='Subtitle')```
     * ```title_para = doc.paragraphs[0].insert_paragraph_before(title, style='Title')```
 
-
+##Things to update
+1. provide commands for uploading to s3
+2. try deploying in another account to see if it works
+3. update prompt to remove summary of changes
 
 ## to check
 * do people need to run:

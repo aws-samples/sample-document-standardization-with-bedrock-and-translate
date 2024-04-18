@@ -5,6 +5,7 @@ import os
 import subprocess
 import requests
 from docx import Document
+from claude_prompt import get_claude_prompt
 
 # Initialize S3 client with specific configurations
 config = Config(connect_timeout=5, read_timeout=60, retries={"total_max_attempts": 20, "mode": "adaptive"})
@@ -66,10 +67,12 @@ def handler(event, context):
 
         # Using Claude v2.1 (update as needed)
         modelID = "anthropic.claude-v2:1"
+        
+        model_prompt = get_claude_prompt(markdown_content)
 
-        prompt = f"""\n\nHuman: Correct any spelling or grammar mistake you see in the following text without changing any of the html formatting: \n\nAssistant:"""
+        #prompt = f"""\n\nHuman: Correct any spelling or grammar mistake you see in the following text without changing any of the html formatting: \n\nAssistant:"""
 
-        llm_model_args = {"prompt": prompt + " " + markdown_content, "max_tokens_to_sample": 5000,
+        llm_model_args = {"prompt": model_prompt, "max_tokens_to_sample": 5000,
                           "stop_sequences": [], "temperature": 0.0, "top_p": 0.9}
 
         body = json.dumps(llm_model_args)
@@ -106,8 +109,8 @@ def handler(event, context):
         # Load the corrected Word document
         doc = Document(local_output_path_docx)
         
-        # Remove the first paragraph if it starts with "Human: " (this removes Bedrock's response text from the top of the doc)
-        if doc.paragraphs and doc.paragraphs[0].text.startswith("Human: "):
+        # Remove the first paragraph if it starts with common Bedrock response phrases
+        if doc.paragraphs and (doc.paragraphs[0].text.startswith("Human: ") or doc.paragraphs[0].text.startswith("Here is the text with")):
             p = doc.paragraphs[0]._element
             p.getparent().remove(p)
         
