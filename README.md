@@ -1,30 +1,19 @@
-# Welcome to your CDK TypeScript project
+# Document Processing Pipeline
 
-This is a blank project for CDK development with TypeScript.
-
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
-
-## Useful commands
-
-* `npm run build`   compile typescript to js
-* `npm run watch`   watch for changes and compile
-* `npm run test`    perform the jest unit tests
-* `npx cdk deploy`  deploy this stack to your default AWS account/region
-* `npx cdk diff`    compare deployed stack with current state
-* `npx cdk synth`   emits the synthesized CloudFormation template
-
+This is a simple pipeline that will intake Word docx files, and correct any spelling, grammar and tone mistakes before outputting a corrected version of the document. Messages will be sent so users can be updated when the document correction process succeeds or fails. 
 
 ## Deploying the Solution
 1. Create a new environment in Cloud9 with an m5.large instance.
 2. Clone the repo
+    ```git clone https://github.com/nadhya-p/DocProcessing```
 3. From the root of the directory run the following commands: 
 
-    ```cd DocProcessing/lib/lambda/``` 
-    ```pip install python-docx -t .```
-    ```cd ../..```
+    ```cd DocProcessing/``` 
+    ```npm install```
      ```cdk synth```
     ```cdk deploy```
-4. Make any relevant changes to the styling of the ```custom-reference.docx``` doc (you will need to open it in word and then re-upload to the repo after you've made the changes).
+    
+4. Make any relevant changes to the styling of the ```custom-reference.docx``` doc (you will need to open it in Word and then upload the file to the input S3 bucket after you've made the changes).
     * Any changes you make will need to be made via the Style panes tab in order to propogate to the final output docx. Just changing text size / color will not work.
 
 ## Subscribing to the SNS Topic
@@ -48,7 +37,6 @@ This workflow assumes the following:
 ##Things to update
 1. provide commands for uploading to s3
 2. try deploying in another account to see if it works
-3. update prompt to remove summary of changes
 
 ## to check
 * do people need to run:
