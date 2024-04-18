@@ -34,8 +34,8 @@ export class DocProcessingStack extends cdk.Stack {
     // SNS Topic
     const resultTopic = new sns.Topic(this, 'ResultTopic');
     
-    // Define the Lambda layer
-    const LambdaLayer = new lambda.LayerVersion(this, 'LambdaLayer', {
+    // Define the python-docx Lambda layer
+    const pythondocx_layer = new lambda.LayerVersion(this, 'PythonDocxLayer', {
       code: lambda.Code.fromAsset('../DocProcessing/layer.zip'), 
       compatibleRuntimes: [lambda.Runtime.PYTHON_3_9],
       description: 'A layer for python-docx',
@@ -59,7 +59,7 @@ export class DocProcessingStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_9,
       handler: 'processor.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, 'lambda')),
-      layers: [LambdaLayer, awsSdkPandasLayer, pandoc_layer],
+      layers: [pythondocx_layer, awsSdkPandasLayer, pandoc_layer],
       environment: {
         OUTPUT_BUCKET: outputBucket.bucketName,
       },

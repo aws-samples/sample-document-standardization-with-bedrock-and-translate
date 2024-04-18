@@ -7,11 +7,11 @@ import requests
 from docx import Document
 from claude_prompt import get_claude_prompt
 
-# Initialize S3 client with specific configurations
+# Initialize S3 client
 config = Config(connect_timeout=5, read_timeout=60, retries={"total_max_attempts": 20, "mode": "adaptive"})
 s3_client = boto3.client('s3', config=config)
 
-# Bedrock 
+# Bedrock config
 region = "eu-central-1"
 bedrock = boto3.client(
     service_name='bedrock-runtime',
@@ -19,15 +19,12 @@ bedrock = boto3.client(
     endpoint_url=f'https://bedrock-runtime.{region}.amazonaws.com',
     config=config)
 
-# Company logo path
-company_logo_path = 'SansLogo.png'
-
 def handler(event, context):
     try:
         # Retrieve bucket name and document key from the event object
         bucket_name = event['documentPath']  # Bucket where the DOCX file is stored
-        document_key = event['documentName']  # Key for the DOCX file in the S3 bucket
-        reference_key = 'custom-reference.docx'  # Key for the DOCX file in the S3 bucket
+        document_key = event['documentName']  # Key for the uploaded DOCX file 
+        reference_key = 'custom-reference.docx'  # Key for the reference DOCX file
         output_bucket = os.environ['OUTPUT_BUCKET']  # Environment variable for the output bucket
         
         # Check if the object key is 'custom-reference.docx'
@@ -39,12 +36,12 @@ def handler(event, context):
 
         # Define local paths for temporary file storage
         local_input_path = '/tmp/' + os.path.basename(document_key)
-        local_output_path_md = '/tmp/' + os.path.basename(document_key).replace('.docx', '_corrected.html')
+        local_output_path_html = '/tmp/' + os.path.basename(document_key).replace('.docx', '_corrected.html')
         local_reference_path = '/tmp/' + reference_key
 
         local_output_path_docx = '/tmp/' + os.path.basename(document_key).replace('.docx', '_corrected.docx')
 
-        # Download the DOCX file from S3 to the local path
+        # Download the DOCX files from S3 to the local path
         s3_client.download_file(bucket_name, document_key, local_input_path)
         s3_client.download_file(bucket_name, reference_key, local_reference_path)
         
@@ -52,26 +49,26 @@ def handler(event, context):
         title, subtitle = extract_first_two_paragraphs(local_input_path)
 
 
-        # Convert DOCX to Markdown using Pandoc
+        # Convert DOCX to HTML using Pandoc
         subprocess.run([
             'pandoc',
             local_input_path,
             '-o',
-            local_output_path_md,
+            local_output_path_html,
             '-t', 'html'
         ], check=True)
 
-        # Read the content of the converted Markdown file
-        with open(local_output_path_md, 'r') as f:
-            markdown_content = f.read()
+        # Read the content of the converted HTML file
+        with open(local_output_path_html, 'r') as f:
+            HTML_content = f.read()
 
         # Using Claude v2.1 (update as needed)
         modelID = "anthropic.claude-v2:1"
         
-        model_prompt = get_claude_prompt(markdown_content)
-
-        #prompt = f"""\n\nHuman: Correct any spelling or grammar mistake you see in the following text without changing any of the html formatting: \n\nAssistant:"""
-
+        # Retrieve prompt from claude_prompt.py
+        model_prompt = get_claude_prompt(HTML_content)
+        
+        #Args for Bedrock
         llm_model_args = {"prompt": model_prompt, "max_tokens_to_sample": 5000,
                           "stop_sequences": [], "temperature": 0.0, "top_p": 0.9}
 
@@ -89,17 +86,17 @@ def handler(event, context):
         response = json.loads(response.get("body").read())
         corrected_text = response.get("completion")
 
-        # Write the corrected Markdown content to a new file
-        with open(local_output_path_md, 'w') as f:
+        # Write the corrected HTML content to a new file
+        with open(local_output_path_html, 'w') as f:
             f.write(corrected_text)
         
-        s3_client.upload_file(local_output_path_md, output_bucket, os.path.basename(local_output_path_md))
+        s3_client.upload_file(local_output_path_html, output_bucket, os.path.basename(local_output_path_html))
 
 
-        # Convert the corrected Markdown content back to a Word document
+        # Convert the corrected HTML content back to a Word document
         subprocess.run([
             'pandoc',
-            local_output_path_md,
+            local_output_path_html,
             '-o',
             local_output_path_docx,
             '-t', 'docx',
@@ -125,9 +122,9 @@ def handler(event, context):
         with open(local_output_path_docx, 'rb') as f:
             s3_client.upload_fileobj(f, output_bucket, local_output_path_docx.split('/')[-1])
 
-        # Cleanup local files to free up space (optional but recommended)
+        # Cleanup local files
         os.remove(local_input_path)
-        os.remove(local_output_path_md)
+        os.remove(local_output_path_html)
         os.remove(local_output_path_docx)
 
         return {
