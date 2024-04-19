@@ -19,6 +19,7 @@ This is a simple pipeline that will intake Word docx files, and correct any spel
 
 ## Create a template for the output doc
 In the repo you will find a _customer-reference.docx_. This document contains the styling configuration for the documents that this pipeline will create. If you want to follow certain styling considerations (e.g. all text with header 2 styling has blue font color or a company logo should be in the header of every page) you can update _customer-reference.docx_ accordingly.
+
 **Note:** Any changes you make will need to be made via the Style panes tab of the Word docx. Just changing text size / color of the text will not work.
 
 Once you have updated the _customer-reference.docx_ to your liking, upload it to the _docprocessingstack-inputbucket_ created by CloudFormation.
@@ -30,7 +31,7 @@ After the solution is deployed, an SNS topic will be created. Create a subscript
 If you have not already, request access to Claudev2.1 via the Amazon Bedrock Console.
 
 ## Triggering the Workflow
-Upload a Word doxc of your choice to the _docprocessingstack-inputbucket_ S3 bucket. The document will be processed and the corrected version will be added to the _docprocessingstack-outputbucket_. You will receive and SNS notification when this process is complete.
+Upload a Word .docx file of your choice to the _docprocessingstack-inputbucket_ S3 bucket. The document will be processed and the corrected version will be added to the _docprocessingstack-outputbucket_. You will receive an SNS notification when this process is complete.
 
 
 ## Assumptions
@@ -46,4 +47,4 @@ This workflow assumes the following:
 * You are using Bedrock models located in eu-central-1. If not, change the region in the _processor.py_ file.
 
 ## Changing Output Format
-This project uses [pandoc](https://pandoc.org/) to create HTML and .docx outputs. However, you can change your output file to be any file type that is supported by pandoc.
+This project uses [pandoc](https://pandoc.org/) to create .html and .docx outputs. However, you can change your output file to be any file type that is supported by pandoc.
