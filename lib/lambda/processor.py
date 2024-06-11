@@ -93,7 +93,6 @@ def handler(event, context):
         #Uncomment the following line if you also want the intermediary html file to be uploaded to the S3 bucket
         #s3_client.upload_file(local_output_path_html, output_bucket, os.path.basename(local_output_path_html))
 
-
         # Convert the corrected HTML content back to a Word document
         subprocess.run([
             'pandoc',

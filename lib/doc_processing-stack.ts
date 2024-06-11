@@ -36,7 +36,7 @@ export class DocProcessingStack extends cdk.Stack {
     
     // Define the python-docx Lambda layer
     const pythondocx_layer = new lambda.LayerVersion(this, 'PythonDocxLayer', {
-      code: lambda.Code.fromAsset('../DocProcessing/layer.zip'), 
+      code: lambda.Code.fromAsset('../DocStandardizationPipeline/layer.zip'), 
       compatibleRuntimes: [lambda.Runtime.PYTHON_3_9],
       description: 'A layer for python-docx',
     });
@@ -49,11 +49,10 @@ export class DocProcessingStack extends cdk.Stack {
     );
     
     const pandoc_layer = new lambda.LayerVersion(this, 'PandocLayer', {
-      code: lambda.Code.fromAsset('../DocProcessing/pandoc-layer/pandoc-layer.zip'),
+      code: lambda.Code.fromAsset('../DocStandardizationPipeline/pandoc-layer/pandoc-layer.zip'),
       compatibleRuntimes: [lambda.Runtime.PYTHON_3_9],
       description: "A layer that contains the Pandoc binary"
     });
-
     // Lambda function
     const processingLambda = new lambda.Function(this, 'ProcessingLambda', {
       runtime: lambda.Runtime.PYTHON_3_9,
