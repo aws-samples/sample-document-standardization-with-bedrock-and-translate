@@ -2,7 +2,7 @@
 
 This is a simple pipeline that will intake Word docx files, and correct any spelling, grammar and tone mistakes before outputting a corrected version of the document. Messages will be sent so users can be updated when the document standardization process succeeds or fails. 
 
-**Use case**: the customer wanted a solution where multiple ESL speakers could write documents in English using everyday language, and then have Bedrock update the casual tone of the documents to a business professional tone.
+**Use case**: the customer wanted a solution where multiple ESL speakers could write documents in English using everyday language. Bedrock will update the casual tone of the documents to a business professional tone.
 
 ## How the Pipeline Works
 1. A user updloads a .docx file to the S3 InputBucket and triggers a PutObject S3 notification
@@ -11,9 +11,10 @@ This is a simple pipeline that will intake Word docx files, and correct any spel
 4. The lambda function attemmpts to update the doc by:
     1. Using pandoc to transform the input word doc to html format. This keeps the formatting of the pictures, bullet points etc. so that the format of the doc is not changed after the text is passed to Bedrock.
     2. Passes the html-format text to Bedrock to fix any spelling / grammar mistakes. Bedrock will also update the tone so that the output doc is written in a business professional tone.
-    3. Bedrock's output is transformed back into word-doc format. The format is preserved thanks to the HTML formatting that was used.
+    3. Bedrock's output is transformed back into .docx format. The format of the original doc is preserved in the output doc thanks to the html formatting that was used in the intermediate step.
 5. A success message is sent to subscribers of the SNS topic. If the lambda failed, a failure message is sent to the same SNS topic.
 
+!(Architecture.png)
 
 ## Deploying the Solution
 1. **If deploying locally, skip this step.** If using Cloud9, create a new environment in Cloud9 with an m5.large instance.
@@ -62,3 +63,6 @@ This workflow assumes the following:
 
 ## Changing Output Format
 This project uses [pandoc](https://pandoc.org/) to create .html and .docx outputs. However, you can change your output file to be any file type that is supported by pandoc.
+
+## Destroying the Stack
+From the root directory run ```cdk destroy```. Any documents uploaded to the S3 buckets will be deleted when the stack is destroyed.
