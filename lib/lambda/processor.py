@@ -6,6 +6,8 @@ import subprocess
 import requests
 from docx import Document
 from claude_prompt import get_claude_prompt
+from docx.oxml.ns import qn
+from docx.oxml import OxmlElement
 
 # Initialize S3 client
 config = Config(connect_timeout=5, read_timeout=60, retries={"total_max_attempts": 20, "mode": "adaptive"})
@@ -22,10 +24,10 @@ bedrock = boto3.client(
 def handler(event, context):
     try:
         # Retrieve bucket name and document key from the event object
-        bucket_name = event['documentPath']  # Bucket where the DOCX file is stored
-        document_key = event['documentName']  # Key for the uploaded DOCX file 
-        reference_key = 'custom-reference.docx'  # Key for the reference DOCX file
-        output_bucket = os.environ['OUTPUT_BUCKET']  # Environment variable for the output bucket
+        bucket_name = event['documentPath']  
+        document_key = event['documentName']  
+        reference_key = 'custom-reference.docx'  
+        output_bucket = os.environ['OUTPUT_BUCKET']  
         
         # Check if the object key is 'custom-reference.docx'
         if document_key == reference_key:
@@ -38,7 +40,6 @@ def handler(event, context):
         local_input_path = '/tmp/' + os.path.basename(document_key)
         local_output_path_html = '/tmp/' + os.path.basename(document_key).replace('.docx', '_corrected.html')
         local_reference_path = '/tmp/' + reference_key
-
         local_output_path_docx = '/tmp/' + os.path.basename(document_key).replace('.docx', '_corrected.docx')
 
         # Download the DOCX files from S3 to the local path
@@ -48,14 +49,14 @@ def handler(event, context):
         # Extract title and subtitle before conversion
         title, subtitle = extract_first_two_paragraphs(local_input_path)
 
-
         # Convert DOCX to HTML using Pandoc
         subprocess.run([
             'pandoc',
             local_input_path,
             '-o',
             local_output_path_html,
-            '-t', 'html'
+            '-t', 'html',
+            '--extract-media=/tmp/media'  # Extract images to a temporary directory
         ], check=True)
 
         # Read the content of the converted HTML file
@@ -68,13 +69,12 @@ def handler(event, context):
         # Retrieve prompt from claude_prompt.py
         model_prompt = get_claude_prompt(HTML_content)
         
-        #Args for Bedrock
+        #Bedock
         llm_model_args = {"prompt": model_prompt, "max_tokens_to_sample": 5000,
                           "stop_sequences": [], "temperature": 0.0, "top_p": 0.9}
 
         body = json.dumps(llm_model_args)
 
-        # The actual call to retrieve an answer from the model
         response = bedrock.invoke_model(
             body=body,
             modelId=modelID,
@@ -82,7 +82,6 @@ def handler(event, context):
             contentType='application/json'
         )
 
-        # Assuming Bedrock returns corrected text in JSON response
         response = json.loads(response.get("body").read())
         corrected_text = response.get("completion")
 
@@ -100,6 +99,7 @@ def handler(event, context):
             '-o',
             local_output_path_docx,
             '-t', 'docx',
+            '--resource-path=/tmp/media',  # Ensure Pandoc can find the extracted images
             '--reference-doc', local_reference_path
         ], check=True)
         
@@ -114,6 +114,9 @@ def handler(event, context):
         # Add the title and subtitle back to the beginning of the document
         subtitle_para = doc.paragraphs[0].insert_paragraph_before(subtitle, style='Subtitle')
         title_para = doc.paragraphs[0].insert_paragraph_before(title, style='Title')
+
+        # Center all images in the document
+        center_images(doc)
 
         # Save the modified document
         doc.save(local_output_path_docx)
@@ -139,15 +142,20 @@ def handler(event, context):
         }
 
 def extract_first_two_paragraphs(document_path):
-    """
-    Extracts the first two paragraphs from a Word document.
-
-    Args:
-        document_path (str): The path to the Word document.
-
-    Returns:
-        tuple: A tuple containing the text of the first two paragraphs.
-    """
     doc = Document(document_path)
     paragraphs = [p.text for p in doc.paragraphs[:2]]
     return paragraphs[0], paragraphs[1] if len(paragraphs) > 1 else ""
+
+def center_images(doc):
+    for paragraph in doc.paragraphs:
+        for run in paragraph.runs:
+            if 'graphic' in run.element.xml:
+                # Center the image by setting the alignment of the parent paragraph
+                align_paragraph_center(paragraph)
+
+def align_paragraph_center(paragraph):
+    p = paragraph._element
+    pPr = p.get_or_add_pPr()
+    jc = OxmlElement('w:jc')
+    jc.set(qn('w:val'), 'center')
+    pPr.append(jc)
