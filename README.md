@@ -14,7 +14,7 @@ This is a simple pipeline that will intake Word docx files, and correct any spel
     3. Bedrock's output is transformed back into .docx format. The format of the original doc is preserved in the output doc thanks to the html formatting that was used in the intermediate step.
 5. A success message is sent to subscribers of the SNS topic. If the lambda failed, a failure message is sent to the same SNS topic.
 
-!(Architecture.png)
+![](Architecture.png)
 
 ## Deploying the Solution
 1. **If deploying locally, skip this step.** If using Cloud9, create a new environment in Cloud9 with an m5.large instance.
