@@ -65,7 +65,7 @@ If you do not have a doc ready for testing, you can use the included *tone_test.
 ![](pictures/translated_doc.png)
 
 
-The documents will then be processed with Bedrcok and the corrected version will be added to the _docprocessingstack-outputbucket_. The output bucket has the same format as the input bucket.
+The documents will then be processed with Bedrock and the corrected version will be added to the _docprocessingstack-outputbucket_. The output bucket has the same format as the input bucket.
 
 ![](pictures/output_bucket.png)
 
@@ -77,7 +77,7 @@ You will also receive an SNS notification when this process is complete.
 
 
 ## Updating the languages
-If you'd like to add languages to the solution, update the _exitPaths_ variable in _doc-processing-stack.ts_ to add your languages of choice. You will also need to update the __LANGUAGE_FOLDERS__ and __LANGUAGE_CODES__ variables in _translate.py_, as well as the Bedrock model prompt in *claude_prompt.py*.
+If you'd like to add languages to the solution, update the __exitPaths__ variable in _doc-processing-stack.ts_ to add your languages of choice. You will also need to update the __LANGUAGE_FOLDERS__ and __LANGUAGE_CODES__ variables in _translate.py_, as well as the Bedrock model prompt in *claude_prompt.py*.
 
 ## Assumptions
 This workflow assumes the following:
