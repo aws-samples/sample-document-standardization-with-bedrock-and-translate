@@ -3,7 +3,6 @@ import boto3
 from botocore.config import Config
 import os
 import subprocess
-import requests
 from docx import Document
 from claude_prompt import get_claude_prompt
 from docx.oxml.ns import qn
@@ -14,7 +13,7 @@ config = Config(connect_timeout=5, read_timeout=60, retries={"total_max_attempts
 s3_client = boto3.client('s3', config=config)
 
 # Bedrock config
-region = "eu-central-1"
+region = "us-east-1"
 bedrock = boto3.client(
     service_name='bedrock-runtime',
     region_name=region,
@@ -24,17 +23,10 @@ bedrock = boto3.client(
 def handler(event, context):
     try:
         # Retrieve bucket name and document key from the event object
-        bucket_name = event['documentPath']  
-        document_key = event['documentName']  
+        bucket_name = os.environ['INPUT_BUCKET']  
+        document_key = event['path']  
         reference_key = 'custom-reference.docx'  
         output_bucket = os.environ['OUTPUT_BUCKET']  
-        
-        # Check if the object key is 'custom-reference.docx'
-        if document_key == reference_key:
-            return {
-                'statusCode': 200,
-                'body': json.dumps(f'Uploaded reference template, skipping...')
-            }
 
         # Define local paths for temporary file storage
         local_input_path = '/tmp/' + os.path.basename(document_key)
@@ -47,7 +39,7 @@ def handler(event, context):
         s3_client.download_file(bucket_name, reference_key, local_reference_path)
         
         # Extract title and subtitle before conversion
-        title, subtitle = extract_first_two_paragraphs(local_input_path)
+        #title, subtitle = extract_first_two_paragraphs(local_input_path)
 
         # Convert DOCX to HTML using Pandoc
         subprocess.run([
@@ -62,28 +54,34 @@ def handler(event, context):
         # Read the content of the converted HTML file
         with open(local_output_path_html, 'r') as f:
             HTML_content = f.read()
-
-        # Using Claude v2.1 (update as needed)
-        modelID = "anthropic.claude-v2:1"
         
         # Retrieve prompt from claude_prompt.py
         model_prompt = get_claude_prompt(HTML_content)
+
+        native_request = {
+            "anthropic_version": "bedrock-2023-05-31",
+            "max_tokens": 5000,
+            "temperature": 0.0,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [{"type": "text", "text": model_prompt}],
+                }
+            ],
+        }
+
+        body = json.dumps(native_request)
+
+        # Using Claude 3 Sonnet (update as needed)
+        modelID = "anthropic.claude-3-sonnet-20240229-v1:0"
         
-        #Bedock
-        llm_model_args = {"prompt": model_prompt, "max_tokens_to_sample": 5000,
-                          "stop_sequences": [], "temperature": 0.0, "top_p": 0.9}
-
-        body = json.dumps(llm_model_args)
-
         response = bedrock.invoke_model(
             body=body,
             modelId=modelID,
-            accept='application/json',
-            contentType='application/json'
         )
 
         response = json.loads(response.get("body").read())
-        corrected_text = response.get("completion")
+        corrected_text = response["content"][0]["text"]
 
         # Write the corrected HTML content to a new file
         with open(local_output_path_html, 'w') as f:
@@ -107,13 +105,13 @@ def handler(event, context):
         doc = Document(local_output_path_docx)
         
         # Remove the first paragraph if it starts with common Bedrock response phrases
-        if doc.paragraphs and (doc.paragraphs[0].text.startswith("Human: ") or doc.paragraphs[0].text.startswith("Here is the text with")):
-            p = doc.paragraphs[0]._element
-            p.getparent().remove(p)
+        #if doc.paragraphs and (doc.paragraphs[0].text.startswith("Human: ") or doc.paragraphs[0].text.startswith("Here is the text with")):
+            #p = doc.paragraphs[0]._element
+            #p.getparent().remove(p)
         
         # Add the title and subtitle back to the beginning of the document
-        subtitle_para = doc.paragraphs[0].insert_paragraph_before(subtitle, style='Subtitle')
-        title_para = doc.paragraphs[0].insert_paragraph_before(title, style='Title')
+        #subtitle_para = doc.paragraphs[0].insert_paragraph_before(subtitle, style='Subtitle')
+        #title_para = doc.paragraphs[0].insert_paragraph_before(title, style='Title')
 
         # Center all images in the document
         center_images(doc)
@@ -121,18 +119,31 @@ def handler(event, context):
         # Save the modified document
         doc.save(local_output_path_docx)
 
+        if document_key.endswith("_translated.docx"):
+            final_doc_name = document_key.replace('_translated.docx', '_corrected.docx')
+        else:
+            final_doc_name = document_key.replace('.docx', '_corrected.docx')
+
         # Upload the corrected Word document to the specified output S3 bucket
         with open(local_output_path_docx, 'rb') as f:
-            s3_client.upload_fileobj(f, output_bucket, local_output_path_docx.split('/')[-1])
+            s3_client.upload_fileobj(f, output_bucket, final_doc_name)
+
+        #Create presigned URL
+        url = s3_client.generate_presigned_url('get_object',
+                                                    Params={'Bucket': output_bucket,
+                                                            'Key': final_doc_name},
+                                                    ExpiresIn=3600)
 
         # Cleanup local files
         os.remove(local_input_path)
         os.remove(local_output_path_html)
         os.remove(local_output_path_docx)
 
+        print(url)
+
         return {
             'statusCode': 200,
-            'body': json.dumps(f'Grammar check was successful for {document_key}')
+            'body': json.dumps(f"Grammar check was successful for <a href='{url}'>{document_key}</a>")
         }
     except Exception as e:
         print(f'Error: {str(e)}')
@@ -150,7 +161,6 @@ def center_images(doc):
     for paragraph in doc.paragraphs:
         for run in paragraph.runs:
             if 'graphic' in run.element.xml:
-                # Center the image by setting the alignment of the parent paragraph
                 align_paragraph_center(paragraph)
 
 def align_paragraph_center(paragraph):

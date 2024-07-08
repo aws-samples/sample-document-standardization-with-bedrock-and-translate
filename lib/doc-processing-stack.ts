@@ -1,0 +1,236 @@
+import * as cdk from 'aws-cdk-lib';
+import { Construct } from 'constructs';
+import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
+import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
+import * as sns from 'aws-cdk-lib/aws-sns';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as path from 'path';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as cloudtrail from 'aws-cdk-lib/aws-cloudtrail';
+import * as eventTargets from 'aws-cdk-lib/aws-events-targets';
+
+export class DocProcessingStack extends cdk.Stack {
+  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+    super(scope, id, props);
+
+    // S3 buckets
+    const inputBucket = new s3.Bucket(this, 'InputBucket', {
+      autoDeleteObjects: true,
+      removalPolicy: cdk.RemovalPolicy.DESTROY, 
+      enforceSSL: true,
+    });
+
+    const outputBucket = new s3.Bucket(this, 'OutputBucket', {
+      autoDeleteObjects: true,
+      removalPolicy: cdk.RemovalPolicy.DESTROY, 
+      enforceSSL: true,
+    });
+
+    // Log S3 data events so EventBridge rule can be triggered
+    const trail = new cloudtrail.Trail(this, 'MyS3Trail', {});
+    trail.addS3EventSelector([{bucket: inputBucket}], {
+      readWriteType: cloudtrail.ReadWriteType.WRITE_ONLY,
+    });
+
+    // SNS Topic
+    const resultTopic = new sns.Topic(this, 'ResultTopic');
+    
+    // Define the python-docx Lambda layer
+    const pythondocx_layer = new lambda.LayerVersion(this, 'PythonDocxLayer', {
+      code: lambda.Code.fromAsset('../document-standardization-pipeline/pythondocx_layer.zip'), 
+      compatibleRuntimes: [lambda.Runtime.PYTHON_3_9],
+      description: 'A layer for python-docx',
+    });
+
+    const pandoc_layer = new lambda.LayerVersion(this, 'PandocLayer', {
+      code: lambda.Code.fromAsset('../document-standardization-pipeline/pandoc-layer/pandoc-layer.zip'),
+      compatibleRuntimes: [lambda.Runtime.PYTHON_3_9],
+      description: "A layer that contains the Pandoc binary"
+    });
+
+    // Translate Lambda function
+    const translateLambda = new lambda.Function(this, 'translateLambda', {
+      runtime: lambda.Runtime.PYTHON_3_9,
+      handler: 'translate.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, 'lambda/translate')),
+      layers: [pythondocx_layer],
+      environment: {
+        INPUT_BUCKET: inputBucket.bucketName,
+      },
+      timeout: cdk.Duration.minutes(3),
+      reservedConcurrentExecutions: 1,
+    });
+
+    // Bedrock Lambda function
+    const bedrockLambda = new lambda.Function(this, 'bedrockLambda', {
+      runtime: lambda.Runtime.PYTHON_3_9,
+      handler: 'bedrock_processor.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, 'lambda/bedrock')),
+      layers: [pythondocx_layer, pandoc_layer],
+      environment: {
+        OUTPUT_BUCKET: outputBucket.bucketName,
+        INPUT_BUCKET: inputBucket.bucketName,
+      },
+      timeout: cdk.Duration.minutes(3),
+    });
+
+    // Aggregate Lambda function
+    const aggregationLambda = new lambda.Function(this, 'aggregationLambda', {
+      runtime: lambda.Runtime.PYTHON_3_9,
+      handler: 'aggregate_results.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, 'lambda/aggregation')),
+      timeout: cdk.Duration.minutes(1),
+    });
+
+    // Create S3 folders lambda
+    const createS3foldersLambda = new lambda.Function(this, 'createS3foldersLambda', {
+      runtime: lambda.Runtime.PYTHON_3_9,
+      handler: 'createS3folders.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, 'lambda/createS3folders')),
+      environment: {
+        BUCKET_NAME: inputBucket.bucketName,
+      }
+    });
+    
+    // Permission to read and write S3 buckets
+    inputBucket.grantReadWrite(createS3foldersLambda);
+    inputBucket.grantReadWrite(translateLambda);
+    inputBucket.grantRead(bedrockLambda);
+    outputBucket.grantReadWrite(bedrockLambda);
+
+    // Create a policy statement that allows invoking the Amazon Translate service
+    const translatePolicy = new iam.PolicyStatement({
+      actions: ['translate:TranslateText'],
+      resources: ['*'],
+    })
+     // Attach the policy to the  bedrockLambda role
+     translateLambda.addToRolePolicy(translatePolicy);
+    
+    // Create a policy statement that allows invoking the Bedrock service
+    const bedrockPolicy = new iam.PolicyStatement({
+      actions: ['bedrock:InvokeModel'], 
+      resources: ['*'], 
+    });
+    
+    // Attach the policy to the  bedrockLambda role
+    bedrockLambda.addToRolePolicy(bedrockPolicy);
+
+
+    // Define the Step Functions state machine
+    const translateTask = new tasks.LambdaInvoke(this, 'Translate Task', {
+      lambdaFunction: translateLambda,
+      outputPath: '$.Payload',
+    });
+
+    const bedrockLambdaTask = new tasks.LambdaInvoke(this, 'Invoke Bedrock Processing Lambda', {
+      lambdaFunction: bedrockLambda,
+    });
+
+    const aggregateResultsTask = new tasks.LambdaInvoke(this, 'Aggregate Results', {
+      lambdaFunction: aggregationLambda,
+      payload: sfn.TaskInput.fromObject({
+        mapResults: sfn.JsonPath.stringAt('$.mapResults')
+      }),
+      outputPath: '$.Payload',
+    });
+
+    const publishResultsTask = new tasks.SnsPublish(this, 'Publish Results', {
+      topic: resultTopic,
+      message: sfn.TaskInput.fromJsonPathAt('$.message'),
+    });
+
+    const customReferenceTask = new tasks.LambdaInvoke(this, 'Created S3 folders on intial custom-reference.docx upload', {
+      lambdaFunction: createS3foldersLambda,
+      outputPath: '$.Payload'
+    });
+
+    const parseBody = new sfn.Pass(this, 'Parse Body', {
+      parameters: {
+        'body.$': 'States.StringToJson($.body)',
+      },
+      resultPath: '$.parsedBody',
+    });
+
+    const mapState = new sfn.Map(this, 'Process Docs', {
+      maxConcurrency: 1,
+      itemsPath: sfn.JsonPath.stringAt('$.parsedBody.body.filePaths'),
+      resultPath: '$.mapResults',
+    }).itemProcessor(
+      bedrockLambdaTask.next(
+        new sfn.Choice(this, 'Did Lambda Succeed?')
+          .when(sfn.Condition.numberEquals('$.Payload.statusCode', 200), new sfn.Pass(this, 'Lambda Success'))
+          .otherwise(new sfn.Pass(this, 'Lambda Failure'))
+      )
+    );
+
+    // Update when adding / changing languages
+    const exitPaths = ['french/', 'english/', 'spanish/'];
+    const exitCondition = sfn.Condition.or(...exitPaths.map(path => sfn.Condition.stringEquals('$.documentName', path)));
+    const succeedState = new sfn.Succeed(this, 'Succeed State');
+
+    
+    const definition = new sfn.Choice(this, 'Is Custom Reference?')
+    .when(sfn.Condition.stringEquals('$.documentName', 'custom-reference.docx'), customReferenceTask)
+    .when(exitCondition, succeedState)
+    .otherwise(
+      translateTask.next(
+        new sfn.Choice(this, 'Did Translate Succeed?')
+          .when(sfn.Condition.numberEquals('$.statusCode', 200), 
+            parseBody.next(
+              mapState.next(
+                aggregateResultsTask.next(
+                  publishResultsTask
+                )
+              )
+            )
+          )
+          .otherwise(publishResultsTask)
+      )
+    );
+
+    const stateMachine = new sfn.StateMachine(this, 'StateMachine', {
+      definition,
+      timeout: cdk.Duration.minutes(5),
+    });
+
+    // S3 event rule - ignoring the "_translated.docx" created by the translate lambda
+    const s3EventRule = new events.Rule(this, 's3EventRule', {
+      eventPattern: {
+        source: ['aws.s3'],
+        detailType: ['AWS API Call via CloudTrail'],
+        detail: {
+          eventSource: ['s3.amazonaws.com'],
+          eventName: ['PutObject'],
+          requestParameters: {
+            bucketName: [inputBucket.bucketName],
+            key: [{ "anything-but": {
+              "suffix": "_translated.docx"
+            }}]
+          }
+        }
+      }
+    });
+
+    // Target the state machine from the S3 event
+    s3EventRule.addTarget(new eventTargets.SfnStateMachine(stateMachine, {
+      input: events.RuleTargetInput.fromObject({
+        "documentName": events.EventField.fromPath('$.detail.requestParameters.key'),
+        "documentPath": events.EventField.fromPath('$.detail.requestParameters.bucketName')
+      }),
+    }));
+
+    // Grant EventBridge permission to invoke the state machine
+    stateMachine.grantStartExecution(new iam.ServicePrincipal('events.amazonaws.com'));
+
+    // SNS notifications for state machine execution results
+    resultTopic.grantPublish(stateMachine);
+
+    // Grant permissions to the state machine to invoke the Lambdas
+    translateLambda.grantInvoke(new iam.ServicePrincipal('states.amazonaws.com'));
+    bedrockLambda.grantInvoke(new iam.ServicePrincipal('states.amazonaws.com'));
+    aggregationLambda.grantInvoke(new iam.ServicePrincipal('states.amazonaws.com'));
+    createS3foldersLambda.grantInvoke(new iam.ServicePrincipal('states.amazonaws.com'));
+  }
+}

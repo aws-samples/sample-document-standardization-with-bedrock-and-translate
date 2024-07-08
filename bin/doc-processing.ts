@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
-import { DocProcessingStack } from '../lib/doc_processing-stack';
+import { DocProcessingStack } from '../lib/doc-processing-stack';
 
 const app = new cdk.App();
 new DocProcessingStack(app, 'DocStandardizationStack', {
