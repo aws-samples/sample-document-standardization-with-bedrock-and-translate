@@ -1,6 +1,6 @@
 # Document Processing Pipeline (UPDATE IN PROGRESS)
 
-This is a simple pipeline that will intake Word docx files and translate them before correcting any spelling, grammar and tone mistakes.A corrected version of the document will be added to an output S3 bucket. Messages will be sent so users can be updated when the document standardization process succeeds or fails. 
+This is a simple pipeline that will intake Word docx files and translate them before correcting any spelling, grammar and tone mistakes. A corrected version of the document will be added to an output S3 bucket. Messages will be sent so users can be updated when the document standardization process succeeds or fails. 
 
 **Use case**: the customer wanted a solution where multiple ESL speakers could write documents in English using everyday language. The customer wanted to improve the grammar and tone of the original documents, while also translating the documents to Spanish and French.
 
@@ -19,14 +19,14 @@ This is a simple pipeline that will intake Word docx files and translate them be
 7. A success message is sent to subscribers of the SNS topic. If any part of the proccess failed, a failure message is sent to the same SNS topic.
 
 UPDATE ARCH
-![](Architecture.png)
+![](pictures/Architecture.png)
 
 
 ## Deploying the Solution
 1. **If deploying locally, skip this step.** If using Cloud9, create a new environment in Cloud9 with an m5.large instance.
 2. Clone the repo
     ```bash
-    git clone https://github.com/nadhya-p/DocProcessing
+    git clone git@ssh.gitlab.aws.dev:nadhyap/bedrock-blog-post-doc-standardization-pipeline.git
     ```
 3. Run the following commands: 
 
@@ -34,7 +34,6 @@ UPDATE ARCH
     cd document-standardization-pipeline
     npm install
     cdk bootstrap
-    cdk synth
     cdk deploy
     ```
 
@@ -64,6 +63,8 @@ If you do not have a doc ready for testing, you can use the included *tone_test.
 
 ![](pictures/translated_doc.png)
 
+![](pictures/spanish_translation.png)
+
 
 The documents will then be processed with Bedrock and the corrected version will be added to the _docprocessingstack-outputbucket_. The output bucket has the same format as the input bucket.
 
@@ -72,6 +73,9 @@ The documents will then be processed with Bedrock and the corrected version will
 ![](pictures/english.png)
 
 ![](pictures/french.png)
+
+![](pictures/spanish.png)
+
 
 You will also receive an SNS notification when this process is complete.
 
@@ -83,13 +87,16 @@ If you'd like to add languages to the solution, update the __exitPaths__ variabl
 This workflow assumes the following:
 * You are uploading a docx file
 * You would like a docx file as your final output
-* Your document has a Title and Subtitle, with no body text above them.
+* Your document title is in H1 format. 
+* You are using Bedrock models located in us-east-1. If not, change the region in the _processor.py_ file.
+
+
+If your document is setup with Titles and Subtitle formatting (rather than H1 for the title), follow the steps below:
 * If your document only has a title, update the ```extract_first_two_paragraphs(local_input_path)``` function accordingly.
-* If your title is in Header 1 format, remove the following lines of code in the _processor.py_ file: 
+* If your document title is not in Header 1 format, uncomment the following lines of code in the _processor.py_ file: 
     * ```title, subtitle = extract_first_two_paragraphs(local_input_path)```
     * ```subtitle_para = doc.paragraphs[0].insert_paragraph_before(subtitle, style='Subtitle')```
     * ```title_para = doc.paragraphs[0].insert_paragraph_before(title, style='Title')```
-* You are using Bedrock models located in eu-central-1. If not, change the region in the _processor.py_ file.
 
 ## Changing Output Format
 This project uses [pandoc](https://pandoc.org/) to create .html and .docx outputs. However, you can change your output file to be any file type that is supported by pandoc.
