@@ -27,7 +27,6 @@ def handler(event, context):
             else:
                 failure_docs.append(body)
             
-        #final_message = success_message + "\n\n" + failure_message
         final_message = generate_email_content(success_docs, failure_docs)
         print(final_message)
 

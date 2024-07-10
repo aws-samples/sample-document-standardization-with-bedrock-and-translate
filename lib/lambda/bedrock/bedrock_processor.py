@@ -38,8 +38,6 @@ def handler(event, context):
         s3_client.download_file(bucket_name, document_key, local_input_path)
         s3_client.download_file(bucket_name, reference_key, local_reference_path)
         
-        # Extract title and subtitle before conversion
-        #title, subtitle = extract_first_two_paragraphs(local_input_path)
 
         # Convert DOCX to HTML using Pandoc
         subprocess.run([
@@ -86,9 +84,6 @@ def handler(event, context):
         # Write the corrected HTML content to a new file
         with open(local_output_path_html, 'w') as f:
             f.write(corrected_text)
-        
-        #Uncomment the following line if you also want the intermediary html file to be uploaded to the S3 bucket
-        #s3_client.upload_file(local_output_path_html, output_bucket, os.path.basename(local_output_path_html))
 
         # Convert the corrected HTML content back to a Word document
         subprocess.run([
@@ -103,15 +98,6 @@ def handler(event, context):
         
         # Load the corrected Word document
         doc = Document(local_output_path_docx)
-        
-        # Remove the first paragraph if it starts with common Bedrock response phrases
-        #if doc.paragraphs and (doc.paragraphs[0].text.startswith("Human: ") or doc.paragraphs[0].text.startswith("Here is the text with")):
-            #p = doc.paragraphs[0]._element
-            #p.getparent().remove(p)
-        
-        # Add the title and subtitle back to the beginning of the document
-        #subtitle_para = doc.paragraphs[0].insert_paragraph_before(subtitle, style='Subtitle')
-        #title_para = doc.paragraphs[0].insert_paragraph_before(title, style='Title')
 
         # Center all images in the document
         center_images(doc)
@@ -143,7 +129,7 @@ def handler(event, context):
 
         return {
             'statusCode': 200,
-            'body': json.dumps(f"Grammar check was successful for <a href='{url}'>{document_key}</a>")
+            'body': document_key
         }
     except Exception as e:
         print(f'Error: {str(e)}')
