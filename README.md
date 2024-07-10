@@ -31,7 +31,7 @@ UPDATE ARCH
 3. Run the following commands: 
 
     ```bash
-    cd document-standardization-pipeline
+    cd bedrock-blog-post-doc-standardization-pipeline
     npm install
     cdk bootstrap
     cdk deploy
@@ -59,7 +59,7 @@ Upload a Word .docx file of your choice to the _docprocessingstack-inputbucket_ 
 
 ![](pictures/upload_tone_test.png)
 
-If you do not have a doc ready for testing, you can use the included *tone_test.docx* file. The document will be translated to all languages (excpet the original language of the document), and the translated documents will be added to the corresponding folders in the input bucket with a '_translated' prefix. 
+If you do not have a doc ready for testing, you can use the included *tone_test.docx* file. The document will be translated to all specified languages (excpet the original language of the document), and the translated documents will be added to the corresponding folders in the input bucket with a '_translated' prefix. 
 
 ![](pictures/translated_doc.png)
 
