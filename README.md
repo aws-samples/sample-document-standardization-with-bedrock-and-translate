@@ -5,13 +5,13 @@ This is a simple pipeline that will intake Word docx files and translate them be
 **Use case**: the customer wanted a solution where multiple ESL speakers could write documents in English using everyday language. The customer wanted to improve the grammar and tone of the original documents, while also translating the documents to Spanish and French.
 
 ## How the Pipeline Works
-1. A user updloads a .docx file to the S3 InputBucket and triggers a PutObject S3 notification
-2. The PutObject S3 notification triggers an s3EventRule EventBridge rule
+1. A user updloads a .docx file to the S3 InputBucket and triggers a PutObject S3 notification.
+2. The PutObject S3 notification triggers the *s3EventRule* EventBridge rule.
 3. EventBridge starts the StepFunctions State Machine
-    a. If the uploaded doc is _custom-reference.docx_, the _createS3folders_ function will create the specified S3 folder paths. The creation of the S3 language paths will trigger the Stepfunction state machine again, but the workflow will immediately go to the succeeded state.
-    b. The EventBridge rule will ignore any documents uploaded with the **'-translated.docx'** suffix, as these are the docs we create with the translate lambda.
+    a. If the uploaded doc is _custom-reference.docx_, the _createS3folders_ function will create the specified S3 folder paths if they do not already exist. The creation of the S3 language paths will trigger the Stepfunction state machine again, but the workflow will immediately go to the succeeded state.
+    b. The EventBridge rule will ignore any documents uploaded with the **'_translated.docx'** suffix, as these are the docs we create with the translate lambda.
 4. The translate lambda determines the language of the original document based on which path the user uploaded the document to, and translates the document into the other specified languages.
-5. The bedrcok lambda function attemmpts to update the doc by:
+5. The bedrcok lambda function attempts to update the doc by:
     1. Using pandoc to transform the input word doc to html format. This keeps the formatting of the pictures, bullet points etc. so that the format of the doc is not changed after the text is passed to Bedrock.
     2. Passes the html-format text to Bedrock to fix any spelling / grammar mistakes. Bedrock will also update the tone so that the output doc is written in a business professional tone.
     3. Bedrock's output is transformed back into .docx format. The format of the original doc is preserved in the output doc thanks to the html formatting that was used in the intermediate step.
