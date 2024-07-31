@@ -168,7 +168,7 @@ export class DocProcessingStack extends cdk.Stack {
     );
 
     // Update when adding / changing languages
-    const exitPaths = ['english/', 'dutch/','korean/'];
+    const exitPaths = ['english/', 'spanish/','french/'];
     const exitCondition = sfn.Condition.or(...exitPaths.map(path => sfn.Condition.stringEquals('$.documentName', path)));
     const succeedState = new sfn.Succeed(this, 'creating S3 folder');
 

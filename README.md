@@ -68,7 +68,7 @@ There is no cost associated with requesting model access. You will only be charg
 ## Triggering the Workflow
 **Before triggering the workflow, please ensure that you have already uploaded *custom-reference.docx***
 
-Upload a Word .docx file of your choice to the _docstandardizationstack-inputbucket_ S3 bucket. Upload the document in the folder of the original document language. For example, if your document is written in English, upload it under /english.
+Upload a Word .docx file of your choice to the _docstandardizationstack-inputbucket_ S3 bucket. Upload the document in the folder of the original document language. For example, if your document is written in English, upload it in the english/ folder.
 
 ![](pictures/upload_tone_test.png)
 

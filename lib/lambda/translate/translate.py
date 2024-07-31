@@ -8,11 +8,11 @@ s3 = boto3.client('s3')
 translate = boto3.client('translate')
 
 ## Update the below variables when changing the languages used
-LANGUAGE_FOLDERS = ['english', 'dutch', 'korean']  
+LANGUAGE_FOLDERS = ['english', 'spanish', 'french']  
 LANGUAGE_CODES = {
     'english': 'en',
-    'dutch': 'nl',
-    'korean': 'ko'
+    'spanish': 'es',
+    'french': 'fr'
 }
 
 def create_folder_if_not_exists(bucket_name, folder_name):
