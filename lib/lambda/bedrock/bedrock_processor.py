@@ -129,13 +129,13 @@ def handler(event, context):
 
         return {
             'statusCode': 200,
-            'body': document_key
+            'body': final_doc_name
         }
     except Exception as e:
         print(f'Error: {str(e)}')
         return {
             'statusCode': 500,
-            'body': json.dumps(f'Could not process {document_key}')
+            'body': json.dumps(f'Could not process {document_key} due to the following error: {str(e)}')
         }
 
 def extract_first_two_paragraphs(document_path):

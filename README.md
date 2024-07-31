@@ -11,7 +11,7 @@ This is a simple pipeline that will intake Word docx files and translate them be
     a. If the uploaded doc is _custom-reference.docx_, the _createS3folders_ function will create the specified S3 folder paths if they do not already exist. The creation of the S3 language paths will trigger the Stepfunction state machine again, but the workflow will immediately go to the succeeded state.
     b. The EventBridge rule will ignore any documents uploaded with the **'_translated.docx'** suffix, as these are the docs we create with the translate lambda.
 4. The translate lambda determines the language of the original document based on which path the user uploaded the document to, and translates the document into the other specified languages.
-5. The bedrcok lambda function attempts to update the doc by:
+5. The Bedrock lambda function attempts to update the doc by:
     1. Using pandoc to transform the input word doc to html format. This keeps the formatting of the pictures, bullet points etc. so that the format of the doc is not changed after the text is passed to Bedrock.
     2. Passes the html-format text to Bedrock to fix any spelling / grammar mistakes. Bedrock will also update the tone so that the output doc is written in a business professional tone.
     3. Bedrock's output is transformed back into .docx format. The format of the original doc is preserved in the output doc thanks to the html formatting that was used in the intermediate step.
@@ -49,9 +49,9 @@ In the repo you will find a _custom-reference.docx_. This document contains the 
 
 ![](pictures/style_tab.png)
 
-Once you have updated the _custom-reference.docx_ to your liking, upload it to the *docstandardizationstack-inputbucket* created by CloudFormation. If you do not want to make any changes, update this document to the input S3 bucket as-is. Your output documents will follow the formatting specified in _custom-reference.docx_, regardless of the input format. For example, if your original document has H1 text in black, bold letters but _custom-reference.docx_ specifies that H1 text should be blue and italic, the output doc will have H1 text in blue and italic.
+Once you have updated the _custom-reference.docx_ to your liking, upload it to the *docstandardizationstack-inputbucket* created by CloudFormation. If you do not want to make any changes, upload this document to the input S3 bucket as-is. Your output documents will follow the formatting specified in _custom-reference.docx_, regardless of the input format. For example, if your original document has H1 text in black, bold letters but _custom-reference.docx_ specifies that H1 text should be blue and italic, the output doc will have H1 text in blue and italic.
 
-When _custom-reference.docx_ is uploaded for the first time, /english, /spanish and /french path prefixes will automatically be created in the input bucket.
+When _custom-reference.docx_ is uploaded for the first time, english, spanish and french path prefixes will automatically be created in the input bucket.
 
 ![](pictures/input_bucket.png)
 
@@ -96,8 +96,12 @@ You will also receive an SNS notification when this process is complete.
 ## Updating the languages
 If you'd like to add languages to the solution, update the __exitPaths__ variable in _doc-processing-stack.ts_ to add your languages of choice. You will also need to update the __LANGUAGE_FOLDERS__ and __LANGUAGE_CODES__ variables in _translate.py_, as well as the Bedrock model prompt in *claude_prompt.py*.
 
+If you would like to change the intial folder names on creation, update _createS3folder.py_ as well.
+
 ## Changing Output Format
 This project uses [pandoc](https://pandoc.org/) to create .html and .docx outputs. However, you can change your output file to be any file type that is supported by pandoc.
 
 ## Destroying the Stack
 From the root directory run ```cdk destroy```. Any documents uploaded to the S3 buckets will be deleted when the stack is destroyed.
+Delete the docstandardizationstack-mys3trails S3 bucket.
+

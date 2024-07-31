@@ -10,6 +10,8 @@ import * as path from 'path';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as cloudtrail from 'aws-cdk-lib/aws-cloudtrail';
 import * as eventTargets from 'aws-cdk-lib/aws-events-targets';
+import { DefinitionBody } from 'aws-cdk-lib/aws-stepfunctions';
+
 
 export class DocProcessingStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -166,9 +168,9 @@ export class DocProcessingStack extends cdk.Stack {
     );
 
     // Update when adding / changing languages
-    const exitPaths = ['french/', 'english/', 'spanish/'];
+    const exitPaths = ['english/', 'dutch/','korean/'];
     const exitCondition = sfn.Condition.or(...exitPaths.map(path => sfn.Condition.stringEquals('$.documentName', path)));
-    const succeedState = new sfn.Succeed(this, 'Succeed State');
+    const succeedState = new sfn.Succeed(this, 'creating S3 folder');
 
     
     const definition = new sfn.Choice(this, 'Is Custom Reference?')
@@ -191,11 +193,11 @@ export class DocProcessingStack extends cdk.Stack {
     );
 
     const stateMachine = new sfn.StateMachine(this, 'StateMachine', {
-      definition,
+      definitionBody: DefinitionBody.fromChainable(definition),
       timeout: cdk.Duration.minutes(5),
     });
 
-    // S3 event rule - ignoring the "_translated.docx" created by the translate lambda
+    // S3 event rule - ignoring the "_translated.docx" suffix  created by the translate lambda
     const s3EventRule = new events.Rule(this, 's3EventRule', {
       eventPattern: {
         source: ['aws.s3'],

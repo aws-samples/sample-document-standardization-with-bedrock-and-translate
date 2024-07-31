@@ -8,11 +8,11 @@ s3 = boto3.client('s3')
 translate = boto3.client('translate')
 
 ## Update the below variables when changing the languages used
-LANGUAGE_FOLDERS = ['english', 'spanish', 'french']  
+LANGUAGE_FOLDERS = ['english', 'dutch', 'korean']  
 LANGUAGE_CODES = {
     'english': 'en',
-    'spanish': 'es',
-    'french': 'fr'
+    'dutch': 'nl',
+    'korean': 'ko'
 }
 
 def create_folder_if_not_exists(bucket_name, folder_name):
@@ -44,8 +44,6 @@ def handler(event, context):
         original_filename = os.path.basename(document_key)
 
         all_files = []
-
-        
 
         # Check and create language folders if necessary
         for folder in LANGUAGE_FOLDERS:
@@ -132,5 +130,9 @@ def handler(event, context):
     except Exception as e:
         return {
             'statusCode': 500,
-            "message": str(e)
+            "message": f'translate lambda failed due to the following error: {str(e)}'
         }
+    
+
+
+

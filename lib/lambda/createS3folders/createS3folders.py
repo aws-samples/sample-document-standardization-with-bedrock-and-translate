@@ -7,7 +7,7 @@ s3 = boto3.client('s3')
 def handler(event, context):
     print(event)
     bucket_name = os.environ['BUCKET_NAME']
-    subfolders = ['english/', 'spanish/', 'french/']  # List of subfolders to create
+    subfolders = ['english/', 'dutch/', 'korean/']  # List of subfolders to create
 
     try:
         for subfolder in subfolders:

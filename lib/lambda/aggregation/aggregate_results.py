@@ -12,6 +12,11 @@ def handler(event, context):
             'statusCode': 200,
             'message': final_message
         }
+
+        return {
+            'statusCode': 200,
+            'message': final_message
+        }
     else: 
         success_docs = []
         failure_docs = []
