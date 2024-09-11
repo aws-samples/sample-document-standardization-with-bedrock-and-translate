@@ -123,8 +123,8 @@ If you would like to change the intial folder names on creation, update _createS
 This project uses [pandoc](https://pandoc.org/) to create .html and .docx outputs. However, you can change your output file to be any file type that is supported by pandoc.
 
 ## Destroying the Stack
-1. From the root directory run ```cdk destroy```. **Any documents uploaded to the S3 buckets will be deleted when the stack is destroyed.**
-2. Delete the docstandardizationstack-mys3trails S3 bucket. This can be done via the console or by running:
+1. From the root directory run ```cdk destroy```. **Any documents uploaded to the inputBucket will be deleted when the stack is destroyed.**
+2. Delete the docstandardizationstack-mys3trails S3 bucket that was created. This can be done via the console or by running:
  ``` sh
  aws s3 rm s3://bucket-name --recursive
  aws s3 rb s3://bucket-name
