@@ -58,7 +58,7 @@ When _custom-reference.docx_ is uploaded for the first time, english, spanish an
 If you would like to change the folder names, edit the folders in _createS3Folders.py_
 
 ## Subscribing to the SNS Topic
-After the solution is deployed, an SNS topic will be created. Create a subscription to this topic using a protocol and endpoint of your choice. Make sure to confirm the subscription before testing the workflow.
+After the solution is deployed, an SNS topic will be created. Create a subscription to this topic using a protocol and endpoint of your choice. Make sure to confirm the subscription *before* testing the workflow.
 
 ## Request Access to Claude
 If you have not already, request access to Claude 3 Sonnet via the Amazon Bedrock Console. The *bedrock_processory.py* function is currently calling the Claude model from the us-east-1 region, so you will need to request Clause 3 Sonnet access in the us-east-1 region. If you would like to call a model from a different region instead, update the **region** variable in *bedrock_processor.py* and request model access in your chosen region.
@@ -92,16 +92,20 @@ The documents will then be processed with Bedrock and the corrected version will
 
 You will also receive an SNS notification when this process is complete.
 
+As a safety measure, the EventBridge rule that starts this workflow will be deleted if the StepFunction state machine is triggered more than 5 times in 5 minutes. You can increase this limit by updating the 'threshold' property of the **alarm** variable in _doc-processing-stack.ts_. If you do increase the threshold, be sure to run `cdk deploy` after your changes are saved.
+
 
 ## Updating the languages
 If you'd like to add languages to the solution, update the __exitPaths__ variable in _doc-processing-stack.ts_ to add your languages of choice. You will also need to update the __LANGUAGE_FOLDERS__ and __LANGUAGE_CODES__ variables in _translate.py_, as well as the Bedrock model prompt in *claude_prompt.py*.
 
 If you would like to change the intial folder names on creation, update _createS3folder.py_ as well.
 
+**When updating the languages, please follow ALL of the steps above before testing the workflow.** 
+
 ## Changing Output Format
 This project uses [pandoc](https://pandoc.org/) to create .html and .docx outputs. However, you can change your output file to be any file type that is supported by pandoc.
 
 ## Destroying the Stack
-From the root directory run ```cdk destroy```. Any documents uploaded to the S3 buckets will be deleted when the stack is destroyed.
-Delete the docstandardizationstack-mys3trails S3 bucket.
+1. From the root directory run ```cdk destroy```. **Any documents uploaded to the S3 buckets will be deleted when the stack is destroyed.**
+2. Delete the docstandardizationstack-mys3trails S3 bucket. This can be done via the console or by running
 

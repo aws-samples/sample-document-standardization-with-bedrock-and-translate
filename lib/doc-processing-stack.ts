@@ -10,7 +10,11 @@ import * as path from 'path';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as cloudtrail from 'aws-cdk-lib/aws-cloudtrail';
 import * as eventTargets from 'aws-cdk-lib/aws-events-targets';
+import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
+import * as cloudwatch_actions from 'aws-cdk-lib/aws-cloudwatch-actions';
+import * as sns_subscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
 import { DefinitionBody } from 'aws-cdk-lib/aws-stepfunctions';
+
 
 
 export class DocProcessingStack extends cdk.Stack {
@@ -36,7 +40,7 @@ export class DocProcessingStack extends cdk.Stack {
       readWriteType: cloudtrail.ReadWriteType.WRITE_ONLY,
     });
 
-    // SNS Topic
+    // SNS Topic for workflow results
     const resultTopic = new sns.Topic(this, 'ResultTopic');
     
     // Define the python-docx Lambda layer
@@ -119,7 +123,6 @@ export class DocProcessingStack extends cdk.Stack {
     // Attach the policy to the  bedrockLambda role
     bedrockLambda.addToRolePolicy(bedrockPolicy);
 
-
     // Define the Step Functions state machine
     const translateTask = new tasks.LambdaInvoke(this, 'Translate Task', {
       lambdaFunction: translateLambda,
@@ -192,7 +195,7 @@ export class DocProcessingStack extends cdk.Stack {
       )
     );
 
-    const stateMachine = new sfn.StateMachine(this, 'StateMachine', {
+    const stateMachine = new sfn.StateMachine(this, 'DocProcessingStateMachine', {
       definitionBody: DefinitionBody.fromChainable(definition),
       timeout: cdk.Duration.minutes(5),
     });
@@ -234,5 +237,60 @@ export class DocProcessingStack extends cdk.Stack {
     bedrockLambda.grantInvoke(new iam.ServicePrincipal('states.amazonaws.com'));
     aggregationLambda.grantInvoke(new iam.ServicePrincipal('states.amazonaws.com'));
     createS3foldersLambda.grantInvoke(new iam.ServicePrincipal('states.amazonaws.com'));
+
+    // SNS Topic for publishing alarm notifications
+    const alarmTopic = new sns.Topic(this, 'AlarmTopic', {
+      displayName: 'Infinite Loop Alarm Topic',
+    });
+
+    // CloudWatch Alarm to monitor Lambda invocations
+    const alarm = new cloudwatch.Alarm(this, 'LoopInvocationAlarm', {
+      metric: stateMachine.metric('ExecutionsStarted'),
+      threshold: 5, // Alarm if more than 5 invocations
+      evaluationPeriods: 1, // within 1 evaluation period (5 mins by default)
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      alarmDescription: 'Triggers if state machine is invoked more than 10 times in 5 minutes',
+    });
+
+    // Set SNS Topic as the action for the alarm
+    alarm.addAlarmAction(new cloudwatch_actions.SnsAction(alarmTopic));
+
+    // Create a Lambda function that deletes the S3 event rule
+    const deleteS3EventRuleLambda = new lambda.Function(this, 'DeleteS3EventRuleLambda', {
+      runtime: lambda.Runtime.PYTHON_3_9,
+      handler: 'delete_rule.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, 'lambda/delete_rule')),
+      environment: {
+        RESULTS_TOPIC_ARN: resultTopic.topicArn,
+        EVENT_RULE_NAME: s3EventRule.ruleName,
+      },
+      timeout: cdk.Duration.minutes(3),
+    });
+
+    deleteS3EventRuleLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: [
+        'events:DeleteRule',      
+        'events:RemoveTargets',   
+        'events:ListTargetsByRule' 
+      ],
+      resources: [
+        `arn:aws:events:${this.region}:${this.account}:rule/${s3EventRule.ruleName}`, 
+      ],
+    }));
+    
+    // Grant permission to publish messages to the SNS topic
+    deleteS3EventRuleLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: [
+        'sns:Publish' 
+      ],
+      resources: [
+        resultTopic.topicArn,
+      ],
+    }));
+    
+
+    // Subscribe the deletion Lambda to the SNS Topic
+    alarmTopic.addSubscription(new sns_subscriptions.LambdaSubscription(deleteS3EventRuleLambda));
+
   }
 }
