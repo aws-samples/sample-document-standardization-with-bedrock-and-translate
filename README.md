@@ -1,4 +1,4 @@
-# Document Processing Pipeline (UPDATE IN PROGRESS)
+# Document Processing Pipeline
 
 This is a simple pipeline that will intake Word docx files and translate them before correcting any spelling, grammar and tone mistakes. A corrected version of the document will be added to an output S3 bucket. Messages will be sent so users can be updated when the document standardization process succeeds or fails. 
 
@@ -22,10 +22,10 @@ This is a simple pipeline that will intake Word docx files and translate them be
 
 ## Assumptions
 This workflow assumes the following:
-* You are uploading a docx file
-* You would like a docx file as your final output
+* You are uploading a .docx file
+* You would like a .docx file as your final output
 * You are using Bedrock models located in us-east-1. If not, change the region in the _processor.py_ file.
-* Your document uses header formatting (H1 for the document title, H2 for subsection titles etc.) 
+* Your document uses header formatting (H1 for the document title, H2 for subsection titles, etc.) 
 
 ## Deploying the Solution
 1. **If deploying locally, skip this step.** If using Cloud9, create a new environment in Cloud9 with an m5.large instance.
@@ -58,7 +58,24 @@ When _custom-reference.docx_ is uploaded for the first time, english, spanish an
 If you would like to change the folder names, edit the folders in _createS3Folders.py_
 
 ## Subscribing to the SNS Topic
-After the solution is deployed, an SNS topic will be created. Create a subscription to this topic using a protocol and endpoint of your choice. Make sure to confirm the subscription *before* testing the workflow.
+During deployment, 2 SNS topics will be created. Create a subscription to the *DocStandardizationStack-ResultTopic* topic using a protocol and endpoint of your choice. 
+
+If using the console, click on "Create subscription" and pick the endpoint of your choice.
+
+![](pictures/sns-sub.png)
+
+![](pictures/sns-endpoint.png)
+
+If using the CLI, use the following notation to subscribe:
+``` sh
+aws sns subscribe \
+    --topic-arn arn:aws:sns:us-east-1:my-account:DocStandardizationStack-ResultTopic... \
+    --protocol email \
+    --notification-endpoint my-email@example.com
+```
+
+**Make sure to confirm the subscription *before* testing the workflow.**
+
 
 ## Request Access to Claude
 If you have not already, request access to Claude 3 Sonnet via the Amazon Bedrock Console. The *bedrock_processory.py* function is currently calling the Claude model from the us-east-1 region, so you will need to request Clause 3 Sonnet access in the us-east-1 region. If you would like to call a model from a different region instead, update the **region** variable in *bedrock_processor.py* and request model access in your chosen region.
@@ -92,7 +109,7 @@ The documents will then be processed with Bedrock and the corrected version will
 
 You will also receive an SNS notification when this process is complete.
 
-As a safety measure, the EventBridge rule that starts this workflow will be deleted if the StepFunction state machine is triggered more than 5 times in 5 minutes. You can increase this limit by updating the 'threshold' property of the **alarm** variable in _doc-processing-stack.ts_. If you do increase the threshold, be sure to run `cdk deploy` after your changes are saved.
+As a safety measure, the EventBridge rule that starts this workflow will be deleted if the StepFunction state machine is triggered more than 5 times in 5 minutes. You can increase this limit by updating the 'threshold' property of the **alarm** variable in _doc-processing-stack.ts_. If you do increase the threshold, be sure to save your changes before running `cdk deploy` to push the changes to the deployed stack.
 
 
 ## Updating the languages
@@ -107,5 +124,9 @@ This project uses [pandoc](https://pandoc.org/) to create .html and .docx output
 
 ## Destroying the Stack
 1. From the root directory run ```cdk destroy```. **Any documents uploaded to the S3 buckets will be deleted when the stack is destroyed.**
-2. Delete the docstandardizationstack-mys3trails S3 bucket. This can be done via the console or by running
+2. Delete the docstandardizationstack-mys3trails S3 bucket. This can be done via the console or by running:
+ ``` sh
+ aws s3 rm s3://bucket-name --recursive
+ aws s3 rb s3://bucket-name
+```
 
