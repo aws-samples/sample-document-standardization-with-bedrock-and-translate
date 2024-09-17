@@ -22,7 +22,7 @@ Automate your document processing: ingest Word files, translate content, correct
 
 ## License
 This code in this project is licensed under the MIT-0 License. See the [LICENSE](LICENSE) file for details.
-This project also uses [Pandoc](https://pandoc.org), which is licensed under the GNU General Public License (GPL) version 2. You can find the full text of the GPL v2 license at [GNU’s GPL v2 page](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html).
+This project depends on [Pandoc](https://pandoc.org), which is licensed under the GNU General Public License (GPL) version 2. You can find the full text of the GPL v2 license at [GNU’s GPL v2 page](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html).
 
 ## Assumptions
 This workflow assumes the following:
