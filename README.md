@@ -99,6 +99,8 @@ If you do not have a doc ready for testing, you can use the included *tone_test.
 
 ![](pictures/spanish_translation.png)
 
+### Output Documents
+
 
 The documents will then be processed with Bedrock and the corrected version will be added to the _docstandardizationstack-outputbucket_. The output bucket has the same format as the input bucket.
 

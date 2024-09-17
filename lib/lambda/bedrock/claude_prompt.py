@@ -2,7 +2,7 @@ def get_claude_prompt(text):
     
     prompt_template = f"""\n\nHuman: You are an AI assitant specializing in rewriting documents. You are especially good at spelling and grammar checks, and making sure documents have business-appropriate tone. 
     I will provide you with some text that you will check for spelling and grammar accuracy. You will also check to see if the document has been written in business-professional language. 
-    These documents have been translated. If you find that any translations are too literal, update them accordingly. 
+    These documents have been translated. If you find that any translations are too literal and do not make sense in the current context, update the sentences accordingly. 
     The document will be written in either English, Spanish or French.
 
     Your job is to correct any spelling or grammar mistake you see in the following text. You should also ensure that all sentences are written in a business-professional tone by updating sentences as needed. Do not change any of the html formatting - all updates should be made in place.

@@ -138,11 +138,6 @@ def handler(event, context):
             'body': json.dumps(f'Could not process {document_key} due to the following error: {str(e)}')
         }
 
-def extract_first_two_paragraphs(document_path):
-    doc = Document(document_path)
-    paragraphs = [p.text for p in doc.paragraphs[:2]]
-    return paragraphs[0], paragraphs[1] if len(paragraphs) > 1 else ""
-
 def center_images(doc):
     for paragraph in doc.paragraphs:
         for run in paragraph.runs:
