@@ -1,8 +1,8 @@
 # Document Processing Pipeline
 
-This is a simple pipeline that will intake Word docx files and translate them before correcting any spelling, grammar and tone mistakes. A corrected version of the document will be added to an output S3 bucket. Messages will be sent so users can be updated when the document standardization process succeeds or fails. 
+Automate your document processing: ingest Word files, translate content, correct language errors, and deliver polished output to S3 with real-time SNS status updates.
 
-**Use case**: the customer wanted a solution where multiple ESL speakers could write documents in English using everyday language. The customer wanted to improve the grammar and tone of the original documents, while also translating the documents to Spanish and French.
+**Use case**: Organizations with multilingual teams often need a solution that allows non-native English speakers to create documents using everyday language. The goal is to enhance the grammar and tone of the original English documents while also providing translations into Spanish and French. This approach improves communication efficiency and ensures consistent messaging across multiple languages.
 
 ## How the Pipeline Works
 1. A user updloads a .docx file to the S3 InputBucket and triggers a PutObject S3 notification.
@@ -20,11 +20,15 @@ This is a simple pipeline that will intake Word docx files and translate them be
 
 ![](pictures/arch.png)
 
+## License
+This code in this project is licensed under the MIT-0 License. See the [LICENSE](LICENSE) file for details.
+This project also uses [Pandoc](https://pandoc.org), which is licensed under the GNU General Public License (GPL) version 2. You can find the full text of the GPL v2 license at [GNU’s GPL v2 page](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html).
+
 ## Assumptions
 This workflow assumes the following:
 * You are uploading a .docx file
 * You would like a .docx file as your final output
-* You are using Bedrock models located in us-east-1. If not, change the region in the _processor.py_ file.
+* You are using Bedrock models located in us-east-1. If not, change the region in the _processor.py_ file
 * Your document uses header formatting (H1 for the document title, H2 for subsection titles, etc.) 
 
 ## Deploying the Solution
@@ -58,7 +62,7 @@ When _custom-reference.docx_ is uploaded for the first time, english, spanish an
 If you would like to change the folder names, edit the folders in _createS3Folders.py_
 
 ## Subscribing to the SNS Topic
-During deployment, 2 SNS topics will be created. Create a subscription to the *DocStandardizationStack-ResultTopic* topic using a protocol and endpoint of your choice. 
+During deployment, 2 SNS topics will be created. Create a subscription to the *DocStandardizationStack-ResultTopic* topic using a protocol and endpoint of your choice. The below examples show how to create an email subscription to your SNS topic.
 
 If using the console, click on "Create subscription" and pick the endpoint of your choice.
 
@@ -85,7 +89,7 @@ There is no cost associated with requesting model access. You will only be charg
 ## Triggering the Workflow
 **Before triggering the workflow, please ensure that you have already uploaded *custom-reference.docx***
 
-Upload a Word .docx file of your choice to the _docstandardizationstack-inputbucket_ S3 bucket. Upload the document in the folder of the original document language. For example, if your document is written in English, upload it in the english/ folder.
+Upload a Word .docx file of your choice to the _docstandardizationstack-inputbucket_ S3 bucket. Upload the document in the folder of the original document language. For example, if your document is written in English, upload it in the _english/_ folder.
 
 ![](pictures/upload_tone_test.png)
 
