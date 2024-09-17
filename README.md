@@ -46,14 +46,14 @@ This workflow assumes the following:
     cdk deploy
     ```
 
-## Create a standard template for the output doc
+## Create & Upload a standard template for the output doc
 In the repo you will find a _custom-reference.docx_. This document contains the styling configuration for the documents that this pipeline will create. If you want to follow certain styling considerations (e.g. all text with H2 styling has blue font color or a company logo should be in the header of every page) you can update _custom-reference.docx_ accordingly. 
 
 **Note:** Any styling changes you make will need to be made via the Style panes tab of the Word docx. Just changing text size / color of the text in the document will not work. 
 
 ![](pictures/style_tab.png)
 
-Once you have updated the _custom-reference.docx_ to your liking, upload it to the *docstandardizationstack-inputbucket* created by CloudFormation. If you do not want to make any changes, upload this document to the input S3 bucket as-is. Your output documents will follow the formatting specified in _custom-reference.docx_, regardless of the input format. For example, if your original document has H1 text in black, bold letters but _custom-reference.docx_ specifies that H1 text should be blue and italic, the output doc will have H1 text in blue and italic.
+Once you have updated the _custom-reference.docx_ to your liking, **upload it to the *docstandardizationstack-inputbucket* created by CloudFormation**. If you do not want to make any changes, upload this document to the input S3 bucket as-is. Your output documents will follow the formatting specified in _custom-reference.docx_, regardless of the input format. For example, if your original document has H1 text in black, bold letters but _custom-reference.docx_ specifies that H1 text should be blue and italic, the output doc will have H1 text in blue and italic.
 
 When _custom-reference.docx_ is uploaded for the first time, english, spanish and french path prefixes will automatically be created in the input bucket.
 
@@ -128,7 +128,7 @@ This project uses [pandoc](https://pandoc.org/) to create .html and .docx output
 
 ## Destroying the Stack
 1. From the root directory run ```cdk destroy```. **Any documents uploaded to the inputBucket will be deleted when the stack is destroyed.**
-2. Delete the docstandardizationstack-mys3trails S3 bucket that was created. This can be done via the console or by running:
+2. Delete the d*ocstandardizationstack-mys3trails* S3 bucket that was created. This can be done via the console or by running the following commands from your terminal:
  ``` sh
  aws s3 rm s3://bucket-name --recursive
  aws s3 rb s3://bucket-name
