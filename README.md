@@ -8,9 +8,9 @@ Automate your document processing: ingest Word files, translate content, correct
 1. A user updloads a .docx file to the S3 InputBucket and triggers a PutObject S3 notification.
 2. The PutObject S3 notification triggers the *s3EventRule* EventBridge rule.
 3. EventBridge starts the StepFunctions State Machine
-    a. If the uploaded doc is _custom-reference.docx_, the _createS3folders_ function will create the specified S3 folder paths if they do not already exist. The creation of the S3 language paths will trigger the Stepfunction state machine again, but the workflow will immediately go to the succeeded state.
-    b. The EventBridge rule will ignore any documents uploaded with the **'_translated.docx'** suffix, as these are the docs we create with the translate lambda.
-4. The translate lambda determines the language of the original document based on which path the user uploaded the document to, and translates the document into the other specified languages.
+    a. If the uploaded doc is _custom-reference.docx_, the *createS3folders* function will create S3 folder paths for the languages specified in  _createS3folder.py_. 
+    b. The EventBridge rule will ignore any documents uploaded with the **'_translated.docx'** suffix, as these are the docs we create with the *translate.py* lambda.
+4. The translate lambda determines the language of the original document based on which path the user uploaded the document to, and translates the document into the other languages specified in  _translate.py_.
 5. The Bedrock lambda function attempts to update the doc by:
     1. Using pandoc to transform the input word doc to html format. This keeps the formatting of the pictures, bullet points etc. so that the format of the doc is not changed after the text is passed to Bedrock.
     2. Passes the html-format text to Bedrock to fix any spelling / grammar mistakes. Bedrock will also update the tone so that the output doc is written in a business professional tone.
@@ -21,30 +21,52 @@ Automate your document processing: ingest Word files, translate content, correct
 ![](pictures/arch.png)
 
 ## License
-This code in this project is licensed under the MIT-0 License. See the [LICENSE](LICENSE) file for details.
+This code in this project is licensed under the MIT-0 License. See the [LICENSE](LICENSE) file for details.  
 This project depends on [Pandoc](https://pandoc.org), which is licensed under the GNU General Public License (GPL) version 2. You can find the full text of the GPL v2 license at [GNU’s GPL v2 page](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html).
 
 ## Assumptions
 This workflow assumes the following:
+* You have Docker installed on your computer
 * You are uploading a .docx file
 * You would like a .docx file as your final output
 * You are using Bedrock models located in us-east-1. If not, change the region in the _processor.py_ file
 * Your document uses header formatting (H1 for the document title, H2 for subsection titles, etc.) 
 
-## Deploying the Solution
-1. **If deploying locally, skip this step.** If using Cloud9, create a new environment in Cloud9 with an m5.large instance.
-2. Clone the repo
-    ```bash
-    git clone git@ssh.gitlab.aws.dev:nadhyap/bedrock-blog-post-doc-standardization-pipeline.git
-    ```
-3. Run the following commands: 
+## Pandoc Dependency
+This project uses [Pandoc 3.1.13](https://github.com/jgm/pandoc/releases) for document conversion, but **Pandoc is not included directly in this repository**. Instead, you will need to build the Pandoc Lambda layer using Docker. The instructions below will guide you through the process of building the Pandoc layer.
 
-    ```bash
-    cd bedrock-blog-post-doc-standardization-pipeline
-    npm install
-    cdk bootstrap
-    cdk deploy
-    ```
+If you'd like to change the Pandoc version, you can modify the release version in the *Dockerfile*. Please note that any Pandoc version used must result in a *pandoc_layer.zip* file that is 50MB or less to be compatible with AWS Lambda layers.
+
+### Prerequisites: Docker Installation
+To build the Pandoc layer, you'll need to have Docker installed on your system. If you don't already have Docker installed, you can follow the instructions for your platform:
+
+- **[Install Docker for Mac](https://docs.docker.com/desktop/install/mac-install/)**
+- **[Install Docker for Windows](https://docs.docker.com/desktop/install/windows-install/)**
+- **[Install Docker for Linux](https://docs.docker.com/desktop/install/linux-install/)**
+
+Once Docker is installed, verify that it's running by executing the following command in your terminal:
+
+```sh
+docker --version
+```
+
+## Deploying the Solution
+1. Clone the repo: ```git clone git@ssh.gitlab.aws.dev:nadhyap/bedrock-blog-post-doc-standardization-pipeline.git```
+2. Ensure that Docker is running
+3. Open a terminal in the root of this repository. You may have to ```cd bedrock-blog-post-doc-standardization-pipeline```
+4. Run the following commands to build the Docker image and create the Lambda layer:
+```bash
+docker build --no-cache -t pandoc-layer-builder .
+docker run -v $(pwd)/lib/lambda-layers:/lib/lambda-layers pandoc-layer-builder
+```
+A file named *pandoc_layer.zip* will be generated in the *lib/lambda-layers folder*. Once the zip file is generated, you can deploy to the cloud.
+5. Run the following commands to deploy the stack 
+``` sh
+cd bedrock-blog-post-doc-standardization-pipeline
+npm install
+cdk bootstrap
+cdk deploy
+```
 
 ## Create & Upload a standard template for the output doc
 In the repo you will find a _custom-reference.docx_. This document contains the styling configuration for the documents that this pipeline will create. If you want to follow certain styling considerations (e.g. all text with H2 styling has blue font color or a company logo should be in the header of every page) you can update _custom-reference.docx_ accordingly. 

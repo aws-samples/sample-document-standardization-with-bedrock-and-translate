@@ -51,7 +51,7 @@ export class DocProcessingStack extends cdk.Stack {
     });
 
     const pandoc_layer = new lambda.LayerVersion(this, 'PandocLayer', {
-      code: lambda.Code.fromAsset('lib/lambda-layers/pandoc-layer.zip'),
+      code: lambda.Code.fromAsset('lib/lambda-layers/pandoc_layer.zip'),
       compatibleRuntimes: [lambda.Runtime.PYTHON_3_9],
       description: "A layer that contains the Pandoc binary"
     });
