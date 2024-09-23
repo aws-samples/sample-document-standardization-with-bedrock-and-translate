@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
 def get_claude_prompt(text):
     
     prompt_template = f"""\n\nHuman: You are an AI assitant specializing in rewriting documents. You are especially good at spelling and grammar checks, and making sure documents have business-appropriate tone. 
