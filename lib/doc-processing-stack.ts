@@ -59,6 +59,18 @@ export class DocProcessingStack extends cdk.Stack {
       description: "A layer that contains the Pandoc binary"
     });
 
+    const mammoth_layer = new lambda.LayerVersion(this, 'MammothLayer', {
+      code: lambda.Code.fromAsset(path.join(__dirname, 'lambda-layers/mammoth_layer.zip')),
+      compatibleRuntimes: [lambda.Runtime.PYTHON_3_9], 
+      description: 'Mammoth conversion library',
+    });
+
+    const beatifulsoup_layer = new lambda.LayerVersion(this, 'BS4Layer', {
+      code: lambda.Code.fromAsset(path.join(__dirname, 'lambda-layers/beautifulsoup_layer.zip')),
+      compatibleRuntimes: [lambda.Runtime.PYTHON_3_9], 
+      description: 'BS4 library',
+    });
+
     // Translate Lambda function
     const translateLambda = new lambda.Function(this, 'translateLambda', {
       runtime: lambda.Runtime.PYTHON_3_9,
@@ -78,6 +90,19 @@ export class DocProcessingStack extends cdk.Stack {
       handler: 'bedrock_processor.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, 'lambda/bedrock')),
       layers: [pythondocx_layer, pandoc_layer],
+      environment: {
+        OUTPUT_BUCKET: outputBucket.bucketName,
+        INPUT_BUCKET: inputBucket.bucketName,
+      },
+      timeout: cdk.Duration.minutes(3),
+    });
+
+    // Bedrock Lambda function without pandoc
+    const bedrockLambda2 = new lambda.Function(this, 'bedrockLambda-nopandoc', {
+      runtime: lambda.Runtime.PYTHON_3_9,
+      handler: 'bedrock.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, 'lambda/bedrocknopandoc')),
+      layers: [pythondocx_layer, mammoth_layer, beatifulsoup_layer],
       environment: {
         OUTPUT_BUCKET: outputBucket.bucketName,
         INPUT_BUCKET: inputBucket.bucketName,
@@ -108,6 +133,8 @@ export class DocProcessingStack extends cdk.Stack {
     inputBucket.grantReadWrite(translateLambda);
     inputBucket.grantRead(bedrockLambda);
     outputBucket.grantReadWrite(bedrockLambda);
+    inputBucket.grantRead(bedrockLambda2);
+    outputBucket.grantReadWrite(bedrockLambda2);
 
     // Create a policy statement that allows invoking the Amazon Translate service
     const translatePolicy = new iam.PolicyStatement({
@@ -125,6 +152,8 @@ export class DocProcessingStack extends cdk.Stack {
     
     // Attach the policy to the  bedrockLambda role
     bedrockLambda.addToRolePolicy(bedrockPolicy);
+    bedrockLambda2.addToRolePolicy(bedrockPolicy);
+
 
     // Define the Step Functions state machine
     const translateTask = new tasks.LambdaInvoke(this, 'Translate Task', {

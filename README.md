@@ -12,7 +12,7 @@ Automate your document processing: ingest Word files, translate content, correct
     b. The EventBridge rule will ignore any documents uploaded with the **'_translated.docx'** suffix, as these are the docs we create with the *translate.py* lambda.
 4. The translate lambda determines the language of the original document based on which path the user uploaded the document to, and translates the document into the other languages specified in  _translate.py_.
 5. The Bedrock lambda function attempts to update the doc by:
-    1. Using pandoc to transform the input word doc to html format. This keeps the formatting of the pictures, bullet points etc. so that the format of the doc is not changed after the text is passed to Bedrock.
+    1. Using Pandoc to transform the input word doc to html format. This keeps the formatting of the pictures, bullet points etc. so that the format of the doc is not changed after the text is passed to Bedrock.
     2. Passes the html-format text to Bedrock to fix any spelling / grammar mistakes. Bedrock will also update the tone so that the output doc is written in a business professional tone.
     3. Bedrock's output is transformed back into .docx format. The format of the original doc is preserved in the output doc thanks to the html formatting that was used in the intermediate step.
 6. The results of the map step of the Stepfunction machine will be aggregated in the aggregation lambda.
@@ -149,7 +149,7 @@ If you would like to change the intial folder names on creation, update _createS
 **When updating the languages, please follow ALL of the steps above before testing the workflow.** 
 
 ## Changing Output Format
-This project uses [pandoc](https://pandoc.org/) to create .html and .docx outputs. However, you can change your output file to be any file type that is supported by pandoc.
+This project uses [Pandoc](https://pandoc.org/) to create .html and .docx outputs. However, you can change your output file to be any file type that is supported by Pandoc.
 
 ## Destroying the Stack
 1. From the root directory run ```cdk destroy```. **Any documents uploaded to the inputBucket will be deleted when the stack is destroyed.**
