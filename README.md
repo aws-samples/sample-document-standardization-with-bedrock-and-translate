@@ -1,4 +1,4 @@
-# Document Processing Pipeline
+# Create a Document Standardization Pipeline with Amazon Bedrock & Amazon Translate
 
 Automate your document processing: ingest Word files, translate content, correct language errors, and deliver polished output to S3 with real-time SNS status updates.
 
