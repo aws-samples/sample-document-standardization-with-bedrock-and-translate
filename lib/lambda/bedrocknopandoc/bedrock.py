@@ -16,8 +16,7 @@ from bs4 import BeautifulSoup
 from io import BytesIO
 import base64
 from docx.shared import Pt, RGBColor
-
-
+import zipfile
 
 
 
@@ -38,33 +37,36 @@ def handler(event, context):
         # Retrieve bucket name and document key from the event object
         bucket_name = os.environ['INPUT_BUCKET']  
        # document_key = event['path']  
+        reference_key = 'custom-reference.docx'  
         document_key = 'english/tone_test.docx'
         output_bucket = os.environ['OUTPUT_BUCKET']  
 
-
-
         # Define local paths for temporary file storage
         local_input_path = '/tmp/' + os.path.basename(document_key)
+        local_reference_path = '/tmp/' + os.path.basename(reference_key)
         local_output_path_docx = '/tmp/' + os.path.basename(document_key).replace('.docx', '_corrected.docx')
-        output_dir = "/tmp/output_images"
+        tmp_dir = "/tmp/output_images"
 
-
-        # Download the DOCX files from S3 to the local path
+        # Download the DOCX file from S3 to the local path
         s3_client.download_file(bucket_name, document_key, local_input_path)
         print('file downloaded')
 
+        # Download the reference file from S3 to the local path
+        s3_client.download_file(bucket_name, reference_key, local_reference_path)
+        print('reference file downloaded')
+
+        # Extract images and replace them with placeholders
+        images_info = extract_images_and_replace_with_placeholders(local_input_path, tmp_dir)
+        print('images extracted and replaced with placeholders')
+        print(images_info)
+
         #Convert DOCX to HTML using Mammoth
-        html_content = docx_to_html(local_input_path, output_dir)
-        print('html content generated with image tags pointing to image files')
-
-        # HTML content with <img> tags pointing to images
-        print(html_content)  
-
-        modified_html, images_info = replace_base64_images_with_placeholders(html_content)
-
+        html_content = docx_to_html(local_input_path)
+        print('html content generated')
+        print(html_content)
         
         # Retrieve prompt from claude_prompt.py
-        model_prompt = get_claude_prompt(modified_html)
+        model_prompt = get_claude_prompt(html_content)
 
         native_request = {
             "anthropic_version": "bedrock-2023-05-31",
@@ -90,18 +92,21 @@ def handler(event, context):
 
         response = json.loads(response.get("body").read())
         corrected_text = response["content"][0]["text"]
-
-        print("corrected text")
+        print('text corrected')
         print(corrected_text)
 
-        final_html = restore_base64_images_in_html(corrected_text, images_info)
-        print('images restored, final html below')
-        print(final_html)
+        #html_to_docx(corrected_text, local_output_path_docx)
+
+        #loading template and adding stuff to it
+
+        load_template_and_add_html_content(local_reference_path, local_output_path_docx, corrected_text)
+
+        reinsert_images(local_output_path_docx, images_info)
 
 
-        html_to_docx_with_images(final_html, local_output_path_docx)
+        print(images_info)
 
-        
+        print('docx generated')
         
         # Load the corrected Word document
         doc = Document(local_output_path_docx)
@@ -135,12 +140,17 @@ def handler(event, context):
             'statusCode': 500,
             'body': json.dumps(f'Could not process {document_key} due to the following error: {str(e)}')
         }
+    
 
+
+##USING##
 def center_images(doc):
+    """Center images in doc."""
     for paragraph in doc.paragraphs:
         for run in paragraph.runs:
             if 'graphic' in run.element.xml:
                 align_paragraph_center(paragraph)
+##USING##
 
 def align_paragraph_center(paragraph):
     p = paragraph._element
@@ -149,100 +159,86 @@ def align_paragraph_center(paragraph):
     jc.set(qn('w:val'), 'center')
     pPr.append(jc)
 
-def docx_to_html(docx_path, output_dir):
+def docx_to_html(docx_path):
     """Convert DOCX to HTML using Mammoth."""
     with open(docx_path, "rb") as docx_file:      
         html_content = mammoth.convert_to_html(docx_file).value
         return html_content
-    
 
-def html_to_docx(corrected_html, docx_file_path, output_dir):
-    """Convert corrected HTML back to .docx and reinsert images."""
-    doc = Document()
-    soup = BeautifulSoup(corrected_html, "html.parser")
-
-    # Loop through the HTML content and add text to the DOCX
-    for element in soup:
-        if element.name == 'p':
-            # Add paragraphs to the DOCX
-            paragraph = doc.add_paragraph(element.text)
-        elif element.name == 'h1':
-            doc.add_heading(element.text, level=1)
-        elif element.name == 'h2':
-            doc.add_heading(element.text, level=2)
-        elif element.name == 'h3':
-            doc.add_heading(element.text, level=3)
-        elif element.name == 'h4':
-            doc.add_heading(element.text, level=4)
-        # elif element.name == 'img':
-        #     # Handle the images
-        #     image_filename = element['src'].split("/")[-1]  # Extract the image filename from the src attribute
-        #     image_path = os.path.join(output_dir, image_filename)  # Get the full path to the saved image
-        #     paragraph = doc.add_paragraph()
-        #     run = paragraph.add_run()
-        #     run.add_picture(image_path)
-
-    # Save the new .docx file
-    doc.save(docx_file_path)
-
-
-def replace_base64_images_with_placeholders(html_content):
-    """Replace Base64-encoded images with placeholders and store the image data."""
-    soup = BeautifulSoup(html_content, "html.parser")
-    images_info = []
-    placeholder_counter = 1
-
-    # Find all <img> tags and replace the Base64 data with placeholders
-    for img_tag in soup.find_all("img"):
-        # Extract the Base64 data from the 'src' attribute
-        base64_data = img_tag['src']
-        
-        # Store the Base64 data with a corresponding placeholder
-        images_info.append({
-            "placeholder": f"[IMAGE_{placeholder_counter}]",
-            "base64_data": base64_data
-        })
-        
-        # Replace the 'src' attribute with the placeholder
-        img_tag['src'] = f"[IMAGE_{placeholder_counter}]"
-        placeholder_counter += 1
-
-    # Return the modified HTML content and the stored image data
-    return str(soup), images_info
-
-def restore_base64_images_in_html(corrected_html, images_info):
-    """Restore the Base64-encoded images using placeholders."""
-    # Replace each placeholder with the corresponding Base64 data
-    for image_info in images_info:
-        placeholder = image_info["placeholder"]
-        base64_data = image_info["base64_data"]
-
-        # Replace the placeholder in the HTML with the original Base64 data
-        corrected_html = corrected_html.replace(placeholder, base64_data)
-
-    return corrected_html
 
 def insert_image(element, doc):
     """Handle the insertion of images."""
     base64_data = element['src']
-    image_data = base64.b64decode(base64_data.split(",")[1])
-    image_stream = BytesIO(image_data)
-    paragraph = doc.add_paragraph()
-    run = paragraph.add_run()
-    run.add_picture(image_stream)  
+    
+    # Ensure the Base64 data has the correct format (starts with "data:image")
+    if base64_data.startswith("data:image"):
+        # Strip the metadata and only get the image data
+        base64_data = base64_data.split(",")[1]  # Get only the Base64 data
+        
+        try:
+            # Decode the Base64 data
+            image_data = base64.b64decode(base64_data)
+            
+            # Convert the decoded image data into a BytesIO object for python-docx
+            image_stream = BytesIO(image_data)
+            
+            # Add the image to the document (optionally adjust the size)
+            paragraph = doc.add_paragraph()
+            run = paragraph.add_run()
+            run.add_picture(image_stream) 
+            
+        except Exception as e:
+            print(f"Error decoding or inserting image: {e}")
 
-def _style_heading(text, doc, level, font_size, color=None, italic=False):
+def _style_heading(text, doc, level, font_size, color=None, italic=False, bold=False):
     """Helper function to apply styling to headings (used in mapping)."""
     paragraph = doc.add_paragraph()
     run = paragraph.add_run(text)
     run.font.size = Pt(font_size)
     
     if color:
-        run.font.color.rgb = RGBColor(*color)  # Apply color if provided
+        run.font.color.rgb = RGBColor(*color)
     
-    run.italic = italic  # Apply italic if specified
+    run.italic = italic  
+    run.bold = bold
 
-def html_to_docx_with_images(corrected_html, docx_file_path):
+def _style_text(element, run):
+    """Apply styles like bold and italic to a run."""
+    # Apply bold and italic based on the element's tag
+    if element.name in ['strong', 'b']:
+        run.bold = True
+    if element.name in ['em', 'i']:
+        run.italic = True
+    return run
+
+# def _add_list_item(element, doc, list_type="unordered"):
+#     """Add list items (ul/ol) to the document."""
+#     # Adjust the indentation and style for lists
+#     if list_type == "unordered":
+#         paragraph = doc.add_paragraph(element.text, style='ListBullet')
+#     elif list_type == "ordered":
+#         paragraph = doc.add_paragraph(element.text, style='ListNumber')
+#     return paragraph
+
+# def _add_list_item(element, doc, list_type="unordered"):
+#     """Add list items (ul/ol) to the document, handling nested lists."""
+#     if list_type == "unordered":
+#         paragraph = doc.add_paragraph(element.text, style='ListBullet')
+#     elif list_type == "ordered":
+#         paragraph = doc.add_paragraph(element.text, style='ListNumber')
+    
+#     # Check for nested lists (children of the list item)
+#     for child in element.children:
+#         if child.name == "ul":
+#             for sub_item in child.find_all("li"):
+#                 _add_list_item(sub_item, doc, list_type="unordered")
+#         elif child.name == "ol":
+#             for sub_item in child.find_all("li"):
+#                 _add_list_item(sub_item, doc, list_type="ordered")
+
+#     return paragraph
+
+def html_to_docx(corrected_html, docx_file_path):
     """Convert corrected HTML back to .docx and reinsert Base64-encoded images."""
     doc = Document()
     soup = BeautifulSoup(corrected_html, "html.parser")
@@ -250,10 +246,16 @@ def html_to_docx_with_images(corrected_html, docx_file_path):
     # Inline styling for h1 and other elements in the mapping
     html_to_docx_mapping = {
         'p': lambda element, doc: doc.add_paragraph(element.text),
-        'h1': lambda element, doc: _style_heading(element.text, doc, level=1, font_size=24, color=(0, 0, 255), italic=True),  # Blue, italic, larger font for h1
-        'h2': lambda element, doc: _style_heading(element.text, doc, level=2, font_size=18),
-        'h3': lambda element, doc: _style_heading(element.text, doc, level=3, font_size=16),
-        'img': insert_image  # Insert images
+        'h1': lambda element, doc: _style_heading(element.text, doc, level=1, font_size=24, color=(79, 129, 189), italic=True),  # Blue, italic, larger font for h1
+        'h2': lambda element, doc: _style_heading(element.text, doc, level=2, font_size=18), #h2
+        'h3': lambda element, doc: _style_heading(element.text, doc, level=3, font_size=16), #h3
+        'h4': lambda element, doc: _style_heading(element.text, doc, level=4, font_size=14, italic=True), #h4 
+        'ul': lambda element, doc: _add_list_item(element, doc, list_type="unordered"), #unordered bullet points
+        'ol': lambda element, doc: _add_list_item(element, doc, list_type="ordered"), #ordered bullet points
+        'strong': lambda element, doc: _style_text(element, doc.add_paragraph().add_run()), #bold
+        'b': lambda element, doc: _style_text(element, doc.add_paragraph().add_run()), #bold
+        'em': lambda element, doc: _style_text(element, doc.add_paragraph().add_run()), #italic
+        'i': lambda element, doc: _style_text(element, doc.add_paragraph().add_run()) #italic
     }
 
     # Iterate over all elements in the soup
@@ -265,3 +267,147 @@ def html_to_docx_with_images(corrected_html, docx_file_path):
 
     # Save the new .docx file
     doc.save(docx_file_path)
+
+
+def extract_images_and_replace_with_placeholders(docx_file_path, tmp_dir):
+    """Extract images from Word document, save them to a temporary directory, and replace with placeholders."""
+    doc = Document(docx_file_path)
+    images_info = []
+    image_counter = 1
+
+    # Ensure tmp directory exists
+    os.makedirs(tmp_dir, exist_ok=True)
+
+    # Open the DOCX file as a ZIP archive to extract images
+    with zipfile.ZipFile(docx_file_path, 'r') as docx_zip:
+        # Loop through all paragraphs and runs to find images (graphics)
+        for i, paragraph in enumerate(doc.paragraphs):
+            for run in paragraph.runs:
+                if 'graphic' in run.element.xml:
+                    # Create a placeholder and file path for the image
+                    placeholder = f'[IMAGE_{image_counter}]'
+                    image_filename = f'image_{image_counter}.png'
+                    image_path = os.path.join(tmp_dir, image_filename)
+
+                    # Extract image data from the DOCX ZIP archive
+                    for rel in doc.part.rels:
+                        if "image" in doc.part.rels[rel].target_ref:
+                            image = doc.part.rels[rel].target_part
+                            image_bytes = image._blob
+
+                            # Save the image to the temporary directory
+                            with open(image_path, 'wb') as img_file:
+                                img_file.write(image_bytes)
+
+                            # Store the image information
+                            images_info.append({
+                                "placeholder": placeholder,
+                                "image_path": image_path,
+                                "paragraph_index": i
+                            })
+
+                            # Replace the image with a placeholder in the paragraph
+                            paragraph.clear()
+                            paragraph.add_run(placeholder)
+
+                            image_counter += 1
+                            break  # Stop after processing one image per run
+
+    # Save the modified DOCX with placeholders
+    doc.save(docx_file_path)
+    return images_info
+
+
+def reinsert_images(docx_file_path, images_info):
+    """Reinsert images in place of placeholders in the Word document."""
+    doc = Document(docx_file_path)
+    for image_info in images_info:
+        placeholder = image_info["placeholder"]
+        print(f'placeholder : {placeholder}')
+        image_path = image_info["image_path"]
+        print(f'image_path : {image_path}')
+        paragraph_index = image_info["paragraph_index"]
+
+        # Loop through all paragraphs in the document
+        for paragraph in doc.paragraphs:
+            # Check if the placeholder exists in the paragraph
+            if placeholder in paragraph.text:
+                # Replace the placeholder with the image
+                paragraph.clear()  # Clear the placeholder text
+                run = paragraph.add_run()  # Create a new run to insert the image
+                run.add_picture(image_path)  # Insert the image 
+
+    # Save the final DOCX file with images reinserted
+    doc.save(docx_file_path)
+
+def _add_list(element, doc, list_type, level):
+    """Add unordered or ordered lists, handling nested lists."""
+    list_style = 'ListBullet' if list_type == 'unordered' else 'ListNumber'
+
+    for li in element.find_all('li', recursive=False):
+        # Add the list item text
+        paragraph = doc.add_paragraph(li.text, style=list_style)
+        
+        # Adjust indentation based on the level of the list
+        if level > 0:
+            paragraph_format = paragraph.paragraph_format
+            paragraph_format.left_indent = Pt(level * 20)  # Adjust indentation for sublists
+        
+        # Check if this list item contains a nested list (sublists)
+        for child in li.children:
+            if child.name == 'ul':
+                _add_list(child, doc, list_type='unordered', level=level + 1)
+            elif child.name == 'ol':
+                _add_list(child, doc, list_type='ordered', level=level + 1)
+
+def clear_document_body(doc):
+    """Remove all content from the document body while preserving headers, footers, and styles."""
+    # Remove all paragraphs and content from the document body
+    for paragraph in doc.paragraphs:
+        p = paragraph._element
+        p.getparent().remove(p)
+
+    # Remove all tables, if any exist
+    for table in doc.tables:
+        tbl = table._element
+        tbl.getparent().remove(tbl)
+
+    # The headers and footers remain intact
+    return doc
+
+def load_template_and_add_html_content(template_path, output_path, html_content):
+    """Load a pre-styled template DOCX, add content from HTML, and save it to S3."""
+    # Load the pre-styled template DOCX from S3
+    doc = Document(template_path)
+    print(f'Loaded template')
+
+    # Clear the body of the template
+    clear_document_body(doc)
+    print(f'Cleared body')
+
+    # Parse the HTML content using BeautifulSoup
+    soup = BeautifulSoup(html_content, 'html.parser')
+
+    # HTML-to-DOCX mapping for common elements and styles in the template
+    html_to_docx_mapping = {
+        'p': lambda element, doc: doc.add_paragraph(element.text, style='Normal'),
+        'h1': lambda element, doc: doc.add_paragraph(element.text, style='Heading 1'),
+        'h2': lambda element, doc: doc.add_paragraph(element.text, style='Heading 2'),
+        'h3': lambda element, doc: doc.add_paragraph(element.text, style='Heading 3'),
+        'h4': lambda element, doc: doc.add_paragraph(element.text, style='Heading 4'),
+        'ul': lambda element, doc: _add_list(element, doc, list_type='unordered', level=0),
+        'ol': lambda element, doc: _add_list(element, doc, list_type='ordered', level=0),
+        'strong': lambda element, doc: _style_text(element, doc.add_paragraph().add_run()), #bold
+        'b': lambda element, doc: _style_text(element, doc.add_paragraph().add_run()), #bold
+        'em': lambda element, doc: _style_text(element, doc.add_paragraph().add_run()), #italic
+        'i': lambda element, doc: _style_text(element, doc.add_paragraph().add_run()) #italic
+    }
+
+    # Iterate over all HTML elements and apply the mapping
+    for element in soup:
+        if element.name in html_to_docx_mapping:
+            html_to_docx_mapping[element.name](element, doc)
+
+    # Save the modified document to the output bucket
+    doc.save(output_path)
+
