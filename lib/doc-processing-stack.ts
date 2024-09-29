@@ -178,7 +178,7 @@ export class DocProcessingStack extends cdk.Stack {
       message: sfn.TaskInput.fromJsonPathAt('$.message'),
     });
 
-    const customReferenceTask = new tasks.LambdaInvoke(this, 'Created S3 folders on intial custom-reference.docx upload', {
+    const wordTemplateTask = new tasks.LambdaInvoke(this, 'Created S3 folders on intial word_template.docx upload', {
       lambdaFunction: createS3foldersLambda,
       outputPath: '$.Payload'
     });
@@ -209,7 +209,7 @@ export class DocProcessingStack extends cdk.Stack {
 
     
     const definition = new sfn.Choice(this, 'Is Custom Reference?')
-    .when(sfn.Condition.stringEquals('$.documentName', 'custom-reference.docx'), customReferenceTask)
+    .when(sfn.Condition.stringEquals('$.documentName', 'word_template.docx'), wordTemplateTask)
     .when(exitCondition, succeedState)
     .otherwise(
       translateTask.next(

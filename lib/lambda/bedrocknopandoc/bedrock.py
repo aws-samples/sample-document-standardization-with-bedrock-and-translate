@@ -37,7 +37,7 @@ def handler(event, context):
         # Retrieve bucket name and document key from the event object
         bucket_name = os.environ['INPUT_BUCKET']  
        # document_key = event['path']  
-        reference_key = 'custom-reference.docx'  
+        reference_key = 'word_template.docx'  
         document_key = 'english/tone_test.docx'
         output_bucket = os.environ['OUTPUT_BUCKET']  
 
@@ -340,25 +340,34 @@ def reinsert_images(docx_file_path, images_info):
     # Save the final DOCX file with images reinserted
     doc.save(docx_file_path)
 
-def _add_list(element, doc, list_type, level):
-    """Add unordered or ordered lists, handling nested lists."""
-    list_style = 'ListBullet' if list_type == 'unordered' else 'ListNumber'
+def _add_list(element, doc, level, list_type):
+    """
+    Recursively process ordered/unordered lists and apply styles based on nesting level.
+    """
+    # Select the appropriate list style based on the nesting level and list type
+    if list_type == 'unordered':
+        list_style = 'ListBullet' if level == 0 else f'ListBullet{level + 1}'  # ListBullet, ListBullet2, etc.
+    else:
+        list_style = 'ListNumber' if level == 0 else f'ListNumber{level + 1}'  # ListNumber, ListNumber2, etc.
 
+    # Loop through the immediate children <li> elements of the current list
     for li in element.find_all('li', recursive=False):
-        # Add the list item text
-        paragraph = doc.add_paragraph(li.text, style=list_style)
-        
-        # Adjust indentation based on the level of the list
-        if level > 0:
-            paragraph_format = paragraph.paragraph_format
-            paragraph_format.left_indent = Pt(level * 20)  # Adjust indentation for sublists
-        
-        # Check if this list item contains a nested list (sublists)
+        # Get the text for the current list item
+        list_text = ""
         for child in li.children:
-            if child.name == 'ul':
-                _add_list(child, doc, list_type='unordered', level=level + 1)
-            elif child.name == 'ol':
-                _add_list(child, doc, list_type='ordered', level=level + 1)
+            if child.name is None:
+                list_text += child.strip() + " "
+
+        # Add the list item to the document with the correct style
+        paragraph = doc.add_paragraph(list_text.strip(), style=list_style)
+
+        # Process any nested <ul> or <ol> inside this <li> recursively
+        nested_list = li.find(['ul', 'ol'])
+        if nested_list:
+            # Determine whether the nested list is ordered or unordered
+            nested_list_type = 'unordered' if nested_list.name == 'ul' else 'ordered'
+            _add_list(nested_list, doc, level + 1, nested_list_type)
+
 
 def clear_document_body(doc):
     """Remove all content from the document body while preserving headers, footers, and styles."""
