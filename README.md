@@ -59,7 +59,7 @@ In the repo you will find a *word_template.docx*. This document contains the sty
 
 ![](pictures/style_tab.png)
 
-**Note** Anything that will be present in the output files (e.g. bullets, text, h2, etc.) needs to be defined in the *word_template.docx* file. For example, if the input doc has 4 levels of bullets, but the template file only has up to level 3 (as shown in the picture above), you would need to add Bullet List 4 (or Number List 4) to the template file and re-upload it to *docstandardizationstack-inputbucket*.
+**Note** Anything that will be present in the output files (e.g. bullets, text, h2, etc.) needs to be defined in the *word_template.docx* file. For example, if the input doc has 4 levels of bullets, but the template file only has up to level 3 (as shown in the picture above), you would need to add Bullet List 4 (or Number List 4) to the template file.
 
 
 Once you have updated the *word_template.docx* to your liking, **upload it to the *docstandardizationstack-inputbucket* created by CloudFormation**. If you do not want to make any changes, upload this document to the input S3 bucket as-is. Your output documents will follow the formatting specified in *word_template.docx*, regardless of the input format. For example, if your original document has H1 text in black, bold letters but *word_template.docx* specifies that H1 text should be blue and italic, the output doc will have H1 text in blue and italic.
