@@ -49,64 +49,27 @@ def handler(event, context):
 
         # Download the DOCX file from S3 to the local path
         s3_client.download_file(bucket_name, document_key, local_input_path)
-        print('file downloaded')
 
-        # Download the reference file from S3 to the local path
+        # Download the reference template from S3 to the local path
         s3_client.download_file(bucket_name, reference_key, local_reference_path)
-        print('reference file downloaded')
 
         # Extract images and replace them with placeholders
         images_info = extract_images_and_replace_with_placeholders(local_input_path, tmp_dir)
-        print('images extracted and replaced with placeholders')
-        print(images_info)
-
+        
         #Convert DOCX to HTML using Mammoth
         html_content = docx_to_html(local_input_path)
-        print('html content generated')
-        print(html_content)
         
         # Retrieve prompt from claude_prompt.py
         model_prompt = get_claude_prompt(html_content)
 
-        native_request = {
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 5000,
-            "temperature": 0.0,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [{"type": "text", "text": model_prompt}],
-                }
-            ],
-        }
+        # Send HTML to model for processing
+        corrected_text = invoke_bedrock_model(model_prompt)
 
-        body = json.dumps(native_request)
-
-        # Using Claude 3 Sonnet (update as needed)
-        modelID = "anthropic.claude-3-sonnet-20240229-v1:0"
-        
-        response = bedrock.invoke_model(
-            body=body,
-            modelId=modelID,
-        )
-
-        response = json.loads(response.get("body").read())
-        corrected_text = response["content"][0]["text"]
-        print('text corrected')
-        print(corrected_text)
-
-        #html_to_docx(corrected_text, local_output_path_docx)
-
-        #loading template and adding stuff to it
-
+        # loading template and transforming HTML back to DOCX
         load_template_and_add_html_content(local_reference_path, local_output_path_docx, corrected_text)
 
+        # reinstering images that were removed
         reinsert_images(local_output_path_docx, images_info)
-
-
-        print(images_info)
-
-        print('docx generated')
         
         # Load the corrected Word document
         doc = Document(local_output_path_docx)
@@ -140,17 +103,42 @@ def handler(event, context):
             'statusCode': 500,
             'body': json.dumps(f'Could not process {document_key} due to the following error: {str(e)}')
         }
+
+def invoke_bedrock_model(model_prompt):
+    """Invoke Bedrock model."""
     
+    native_request = {
+            "anthropic_version": "bedrock-2023-05-31",
+            "max_tokens": 5000,
+            "temperature": 0.0,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [{"type": "text", "text": model_prompt}],
+                }
+            ],
+        }
 
+    body = json.dumps(native_request)
 
-##USING##
+    # Using Claude 3 Sonnet (update as needed)
+    modelID = "anthropic.claude-3-sonnet-20240229-v1:0"
+    
+    response = bedrock.invoke_model(
+        body=body,
+        modelId=modelID,
+    )
+
+    response = json.loads(response.get("body").read())
+    corrected_text = response["content"][0]["text"]
+    return corrected_text
+
 def center_images(doc):
     """Center images in doc."""
     for paragraph in doc.paragraphs:
         for run in paragraph.runs:
             if 'graphic' in run.element.xml:
                 align_paragraph_center(paragraph)
-##USING##
 
 def align_paragraph_center(paragraph):
     p = paragraph._element
@@ -159,48 +147,13 @@ def align_paragraph_center(paragraph):
     jc.set(qn('w:val'), 'center')
     pPr.append(jc)
 
+
 def docx_to_html(docx_path):
     """Convert DOCX to HTML using Mammoth."""
     with open(docx_path, "rb") as docx_file:      
         html_content = mammoth.convert_to_html(docx_file).value
         return html_content
 
-
-def insert_image(element, doc):
-    """Handle the insertion of images."""
-    base64_data = element['src']
-    
-    # Ensure the Base64 data has the correct format (starts with "data:image")
-    if base64_data.startswith("data:image"):
-        # Strip the metadata and only get the image data
-        base64_data = base64_data.split(",")[1]  # Get only the Base64 data
-        
-        try:
-            # Decode the Base64 data
-            image_data = base64.b64decode(base64_data)
-            
-            # Convert the decoded image data into a BytesIO object for python-docx
-            image_stream = BytesIO(image_data)
-            
-            # Add the image to the document (optionally adjust the size)
-            paragraph = doc.add_paragraph()
-            run = paragraph.add_run()
-            run.add_picture(image_stream) 
-            
-        except Exception as e:
-            print(f"Error decoding or inserting image: {e}")
-
-def _style_heading(text, doc, level, font_size, color=None, italic=False, bold=False):
-    """Helper function to apply styling to headings (used in mapping)."""
-    paragraph = doc.add_paragraph()
-    run = paragraph.add_run(text)
-    run.font.size = Pt(font_size)
-    
-    if color:
-        run.font.color.rgb = RGBColor(*color)
-    
-    run.italic = italic  
-    run.bold = bold
 
 def _style_text(element, run):
     """Apply styles like bold and italic to a run."""
@@ -210,63 +163,6 @@ def _style_text(element, run):
     if element.name in ['em', 'i']:
         run.italic = True
     return run
-
-# def _add_list_item(element, doc, list_type="unordered"):
-#     """Add list items (ul/ol) to the document."""
-#     # Adjust the indentation and style for lists
-#     if list_type == "unordered":
-#         paragraph = doc.add_paragraph(element.text, style='ListBullet')
-#     elif list_type == "ordered":
-#         paragraph = doc.add_paragraph(element.text, style='ListNumber')
-#     return paragraph
-
-# def _add_list_item(element, doc, list_type="unordered"):
-#     """Add list items (ul/ol) to the document, handling nested lists."""
-#     if list_type == "unordered":
-#         paragraph = doc.add_paragraph(element.text, style='ListBullet')
-#     elif list_type == "ordered":
-#         paragraph = doc.add_paragraph(element.text, style='ListNumber')
-    
-#     # Check for nested lists (children of the list item)
-#     for child in element.children:
-#         if child.name == "ul":
-#             for sub_item in child.find_all("li"):
-#                 _add_list_item(sub_item, doc, list_type="unordered")
-#         elif child.name == "ol":
-#             for sub_item in child.find_all("li"):
-#                 _add_list_item(sub_item, doc, list_type="ordered")
-
-#     return paragraph
-
-def html_to_docx(corrected_html, docx_file_path):
-    """Convert corrected HTML back to .docx and reinsert Base64-encoded images."""
-    doc = Document()
-    soup = BeautifulSoup(corrected_html, "html.parser")
-
-    # Inline styling for h1 and other elements in the mapping
-    html_to_docx_mapping = {
-        'p': lambda element, doc: doc.add_paragraph(element.text),
-        'h1': lambda element, doc: _style_heading(element.text, doc, level=1, font_size=24, color=(79, 129, 189), italic=True),  # Blue, italic, larger font for h1
-        'h2': lambda element, doc: _style_heading(element.text, doc, level=2, font_size=18), #h2
-        'h3': lambda element, doc: _style_heading(element.text, doc, level=3, font_size=16), #h3
-        'h4': lambda element, doc: _style_heading(element.text, doc, level=4, font_size=14, italic=True), #h4 
-        'ul': lambda element, doc: _add_list_item(element, doc, list_type="unordered"), #unordered bullet points
-        'ol': lambda element, doc: _add_list_item(element, doc, list_type="ordered"), #ordered bullet points
-        'strong': lambda element, doc: _style_text(element, doc.add_paragraph().add_run()), #bold
-        'b': lambda element, doc: _style_text(element, doc.add_paragraph().add_run()), #bold
-        'em': lambda element, doc: _style_text(element, doc.add_paragraph().add_run()), #italic
-        'i': lambda element, doc: _style_text(element, doc.add_paragraph().add_run()) #italic
-    }
-
-    # Iterate over all elements in the soup
-    for element in soup:
-        # Check if the element is in the mapping dictionary
-        if element.name in html_to_docx_mapping:
-            # Call the corresponding function (with styling, image handling, etc.)
-            html_to_docx_mapping[element.name](element, doc)
-
-    # Save the new .docx file
-    doc.save(docx_file_path)
 
 
 def extract_images_and_replace_with_placeholders(docx_file_path, tmp_dir):
@@ -370,7 +266,7 @@ def _add_list(element, doc, level, list_type):
 
 
 def clear_document_body(doc):
-    """Remove all content from the document body while preserving headers, footers, and styles."""
+    """Remove all content from the document body of the template while preserving headers, footers, and styles."""
     # Remove all paragraphs and content from the document body
     for paragraph in doc.paragraphs:
         p = paragraph._element
@@ -381,29 +277,27 @@ def clear_document_body(doc):
         tbl = table._element
         tbl.getparent().remove(tbl)
 
-    # The headers and footers remain intact
     return doc
 
 def load_template_and_add_html_content(template_path, output_path, html_content):
     """Load a pre-styled template DOCX, add content from HTML, and save it to S3."""
+    
     # Load the pre-styled template DOCX from S3
     doc = Document(template_path)
-    print(f'Loaded template')
 
     # Clear the body of the template
     clear_document_body(doc)
-    print(f'Cleared body')
 
     # Parse the HTML content using BeautifulSoup
     soup = BeautifulSoup(html_content, 'html.parser')
 
-    # HTML-to-DOCX mapping for common elements and styles in the template
+    # HTML-to-DOCX mapping for common elements and styles in the template. Update as need (e.g. to handle tables)
     html_to_docx_mapping = {
         'p': lambda element, doc: doc.add_paragraph(element.text, style='Normal'),
-        'h1': lambda element, doc: doc.add_paragraph(element.text, style='Heading 1'),
-        'h2': lambda element, doc: doc.add_paragraph(element.text, style='Heading 2'),
-        'h3': lambda element, doc: doc.add_paragraph(element.text, style='Heading 3'),
-        'h4': lambda element, doc: doc.add_paragraph(element.text, style='Heading 4'),
+        # 'h1': lambda element, doc: doc.add_paragraph(element.text, style='Heading 1'),
+        # 'h2': lambda element, doc: doc.add_paragraph(element.text, style='Heading 2'),
+        # 'h3': lambda element, doc: doc.add_paragraph(element.text, style='Heading 3'),
+        # 'h4': lambda element, doc: doc.add_paragraph(element.text, style='Heading 4'),
         'ul': lambda element, doc: _add_list(element, doc, list_type='unordered', level=0),
         'ol': lambda element, doc: _add_list(element, doc, list_type='ordered', level=0),
         'strong': lambda element, doc: _style_text(element, doc.add_paragraph().add_run()), #bold
@@ -411,6 +305,11 @@ def load_template_and_add_html_content(template_path, output_path, html_content)
         'em': lambda element, doc: _style_text(element, doc.add_paragraph().add_run()), #italic
         'i': lambda element, doc: _style_text(element, doc.add_paragraph().add_run()) #italic
     }
+
+    # Add possible headers
+    html_to_docx_mapping.update({
+        f'h{i}': lambda element, doc, i=i: doc.add_paragraph(element.text, style=f'Heading {i}') for i in range(1, 10)
+    })
 
     # Iterate over all HTML elements and apply the mapping
     for element in soup:

@@ -21,46 +21,28 @@ Automate your document processing: ingest Word files, translate content, correct
 ![](pictures/arch.png)
 
 ## License
-This code in this project is licensed under the MIT-0 License. See the [LICENSE](LICENSE) file for details.  
 
-This project depends on [Pandoc](https://pandoc.org), which is licensed under the GNU General Public License (GPL) version 2. You can find the full text of the GPL v2 license at [GNU’s GPL v2 page](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html).
+This project is licensed under the [MIT-0 License](./LICENSE).
+
+### Acknowledgments
+
+This project depends on the following third-party libraries:
+
+- [python-docx](https://github.com/python-openxml/python-docx) - Licensed under the [MIT License](https://opensource.org/licenses/MIT).
+- [Mammoth](https://github.com/mwilliamson/python-mammoth) - Licensed under the [BSD 2-Clause License](https://opensource.org/licenses/BSD-2-Clause).
+- [Beautiful Soup](https://www.crummy.com/software/BeautifulSoup/) - Licensed under the [MIT License](https://opensource.org/licenses/MIT).
+
 
 ## Assumptions
 This workflow assumes the following:
 * You are uploading a .docx file
 * You would like a .docx file as your final output
+* You are able to modify a .docx file on your computer.
 * You are using Bedrock models located in us-east-1. If not, change the region in the _processor.py_ file
-* Your document uses header formatting (H1 for the document title, H2 for subsection titles, etc.) 
-
-## Pandoc Dependency
-This project uses [Pandoc 3.1.13](https://github.com/jgm/pandoc/releases) for document conversion, but **Pandoc is not included directly in this repository**. Instead, you will need to build the Pandoc Lambda layer using Docker. The instructions below will guide you through the process of building the Pandoc layer.
-
-If you'd like to change the Pandoc version, you can modify the release version in the *Dockerfile*. Please note that any Pandoc version used must result in a *pandoc_layer.zip* file that is 50MB or less to be compatible with AWS Lambda layers.
-
-### Prerequisites: Docker Installation
-To build the Pandoc layer, you'll need to have Docker installed on your system. If you don't already have Docker installed, you can follow the instructions for your platform:
-
-- **[Install Docker for Mac](https://docs.docker.com/desktop/install/mac-install/)**
-- **[Install Docker for Windows](https://docs.docker.com/desktop/install/windows-install/)**
-- **[Install Docker for Linux](https://docs.docker.com/desktop/install/linux-install/)**
-
-Once Docker is installed, verify that it's running by executing the following command in your terminal:
-
-```sh
-docker --version
-```
 
 ## Deploying the Solution
 1. Clone the repo: ```git clone git@ssh.gitlab.aws.dev:nadhyap/bedrock-blog-post-doc-standardization-pipeline.git```
-2. Ensure that Docker is running
-3. Open a terminal in the root of this repository. You may have to ```cd bedrock-blog-post-doc-standardization-pipeline```
-4. Run the following commands to build the Docker image and create the Lambda layer:
-```bash
-docker build --no-cache -t pandoc-layer-builder .
-docker run -v $(pwd)/lib/lambda-layers:/lib/lambda-layers pandoc-layer-builder
-```
-A file named *pandoc_layer.zip* will be generated in the *lib/lambda-layers folder*. Once the zip file is generated, you can deploy to the cloud.
-5. Run the following commands to deploy the stack 
+2. Run the following commands to deploy the stack 
 ``` sh
 cd bedrock-blog-post-doc-standardization-pipeline
 npm install
@@ -75,8 +57,10 @@ In the repo you will find a *word_template.docx*. This document contains the sty
 
 **Note:** Any styling changes you make will need to be made via the Style panes tab of the Word docx. Just changing text size / color of the text in the document will not work. 
 
-######UPDATE THIS########
 ![](pictures/style_tab.png)
+
+**Note** Anything that will be present in the output files (e.g. bullets, text, h2, etc.) needs to be defined in the *word_template.docx* file. For example, if the input doc has 4 levels of bullets, but the template file only has up to level 3 (as shown in the picture above), you would need to add Bullet List 4 (or Number List 4) to the template file and re-upload it to *docstandardizationstack-inputbucket*.
+
 
 Once you have updated the *word_template.docx* to your liking, **upload it to the *docstandardizationstack-inputbucket* created by CloudFormation**. If you do not want to make any changes, upload this document to the input S3 bucket as-is. Your output documents will follow the formatting specified in *word_template.docx*, regardless of the input format. For example, if your original document has H1 text in black, bold letters but *word_template.docx* specifies that H1 text should be blue and italic, the output doc will have H1 text in blue and italic.
 
@@ -84,7 +68,7 @@ When *word_template.docx* is uploaded for the first time, english, spanish and f
 
 ![](pictures/input_bucket.png)
 
-If you would like to change the folder names, follow the instructions in the *Updating the languages* section of this README. 
+If you would like to change the folder names, follow the instructions in the [*Updating the languages*](#updating-the-languages) section of this README. 
 
 ## Subscribing to the SNS Topic
 During deployment, 2 SNS topics will be created. Create a subscription to the *DocStandardizationStack-ResultTopic* topic using a protocol and endpoint of your choice. The below examples show how to create an email subscription to your SNS topic.

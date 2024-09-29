@@ -53,12 +53,6 @@ export class DocProcessingStack extends cdk.Stack {
       description: 'A layer for python-docx',
     });
 
-    const pandoc_layer = new lambda.LayerVersion(this, 'PandocLayer', {
-      code: lambda.Code.fromAsset('lib/lambda-layers/pandoc_layer.zip'),
-      compatibleRuntimes: [lambda.Runtime.PYTHON_3_9],
-      description: "A layer that contains the Pandoc binary"
-    });
-
     const mammoth_layer = new lambda.LayerVersion(this, 'MammothLayer', {
       code: lambda.Code.fromAsset(path.join(__dirname, 'lambda-layers/mammoth_layer.zip')),
       compatibleRuntimes: [lambda.Runtime.PYTHON_3_9], 
@@ -89,19 +83,6 @@ export class DocProcessingStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_9,
       handler: 'bedrock_processor.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, 'lambda/bedrock')),
-      layers: [pythondocx_layer, pandoc_layer],
-      environment: {
-        OUTPUT_BUCKET: outputBucket.bucketName,
-        INPUT_BUCKET: inputBucket.bucketName,
-      },
-      timeout: cdk.Duration.minutes(3),
-    });
-
-    // Bedrock Lambda function without pandoc
-    const bedrockLambda2 = new lambda.Function(this, 'bedrockLambda-nopandoc', {
-      runtime: lambda.Runtime.PYTHON_3_9,
-      handler: 'bedrock.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, 'lambda/bedrocknopandoc')),
       layers: [pythondocx_layer, mammoth_layer, beatifulsoup_layer],
       environment: {
         OUTPUT_BUCKET: outputBucket.bucketName,
@@ -133,8 +114,6 @@ export class DocProcessingStack extends cdk.Stack {
     inputBucket.grantReadWrite(translateLambda);
     inputBucket.grantRead(bedrockLambda);
     outputBucket.grantReadWrite(bedrockLambda);
-    inputBucket.grantRead(bedrockLambda2);
-    outputBucket.grantReadWrite(bedrockLambda2);
 
     // Create a policy statement that allows invoking the Amazon Translate service
     const translatePolicy = new iam.PolicyStatement({
@@ -152,8 +131,6 @@ export class DocProcessingStack extends cdk.Stack {
     
     // Attach the policy to the  bedrockLambda role
     bedrockLambda.addToRolePolicy(bedrockPolicy);
-    bedrockLambda2.addToRolePolicy(bedrockPolicy);
-
 
     // Define the Step Functions state machine
     const translateTask = new tasks.LambdaInvoke(this, 'Translate Task', {
@@ -178,7 +155,7 @@ export class DocProcessingStack extends cdk.Stack {
       message: sfn.TaskInput.fromJsonPathAt('$.message'),
     });
 
-    const wordTemplateTask = new tasks.LambdaInvoke(this, 'Created S3 folders on intial word_template.docx upload', {
+    const wordTemplateTask = new tasks.LambdaInvoke(this, 'Template uploaded, creating S3 folders', {
       lambdaFunction: createS3foldersLambda,
       outputPath: '$.Payload'
     });
@@ -205,10 +182,10 @@ export class DocProcessingStack extends cdk.Stack {
     // Update when adding / changing languages
     const exitPaths = ['english/', 'spanish/','french/'];
     const exitCondition = sfn.Condition.or(...exitPaths.map(path => sfn.Condition.stringEquals('$.documentName', path)));
-    const succeedState = new sfn.Succeed(this, 'creating S3 folder');
+    const succeedState = new sfn.Succeed(this, 'S3 folder created');
 
     
-    const definition = new sfn.Choice(this, 'Is Custom Reference?')
+    const definition = new sfn.Choice(this, 'Was template uploaded?')
     .when(sfn.Condition.stringEquals('$.documentName', 'word_template.docx'), wordTemplateTask)
     .when(exitCondition, succeedState)
     .otherwise(
@@ -320,9 +297,25 @@ export class DocProcessingStack extends cdk.Stack {
       ],
     }));
     
-
     // Subscribe the deletion Lambda to the SNS Topic
     alarmTopic.addSubscription(new sns_subscriptions.LambdaSubscription(deleteS3EventRuleLambda));
+
+    // Stack Outputs
+    new cdk.CfnOutput(this, 'ResultTopicName', {
+      value: resultTopic.topicName,
+      description: 'The name of the result SNS topic you subscribe to',
+    });
+    
+    new cdk.CfnOutput(this, 'InputBucketName', {
+      value: inputBucket.bucketName,
+      description: 'The name of the S3 bucket you upload documents to',
+    });
+    
+    new cdk.CfnOutput(this, 'OutputBucketName', {
+      value: outputBucket.bucketName,
+      description: 'The name of the S3 bucket where the processed documents are stored',
+    });
+    
 
   }
 }
