@@ -17,6 +17,8 @@ import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as cloudwatch_actions from 'aws-cdk-lib/aws-cloudwatch-actions';
 import * as sns_subscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
 import { DefinitionBody } from 'aws-cdk-lib/aws-stepfunctions';
+import * as logs from 'aws-cdk-lib/aws-logs';
+
 
 
 
@@ -24,16 +26,27 @@ export class DocProcessingStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+    // Bucket for S3 service logs
+    const logBucket = new s3.Bucket(this, 'S3LogsBucket', {
+      autoDeleteObjects: true,
+      removalPolicy: cdk.RemovalPolicy.DESTROY, 
+      enforceSSL: true,
+    });
+
     // S3 buckets
     const inputBucket = new s3.Bucket(this, 'InputBucket', {
       autoDeleteObjects: true,
       removalPolicy: cdk.RemovalPolicy.DESTROY, 
+      serverAccessLogsBucket: logBucket,
+      serverAccessLogsPrefix: 'InputBucketLogs',
       enforceSSL: true,
     });
 
     const outputBucket = new s3.Bucket(this, 'OutputBucket', {
       autoDeleteObjects: true,
       removalPolicy: cdk.RemovalPolicy.DESTROY, 
+      serverAccessLogsBucket: logBucket,
+      serverAccessLogsPrefix: 'OutputBucketLogs',
       enforceSSL: true,
     });
 
@@ -43,8 +56,15 @@ export class DocProcessingStack extends cdk.Stack {
       readWriteType: cloudtrail.ReadWriteType.WRITE_ONLY,
     });
 
-    // SNS Topic for workflow results
-    const resultTopic = new sns.Topic(this, 'ResultTopic');
+    // SNS Topic for workflow results 
+    const resultTopic = new sns.Topic(this, 'ResultTopic', {
+      topicName: 'DocStandardizationStack-ResultTopic',
+    });
+
+    // Enable server-side encryption with AWS-managed key
+    const cfnResultTopic = resultTopic.node.defaultChild as sns.CfnTopic;
+    cfnResultTopic.kmsMasterKeyId = 'alias/aws/sns';
+    
     
     // Define the python-docx Lambda layer
     const pythondocx_layer = new lambda.LayerVersion(this, 'PythonDocxLayer', {
@@ -204,9 +224,19 @@ export class DocProcessingStack extends cdk.Stack {
       )
     );
 
+    // Create logGroup for state machine
+    const sfnLogGroup = new logs.LogGroup(this, 'DocProcessingStateMachineLogs', {
+      logGroupName: '/aws/vendedlogs/states/DocProcessingStateMachine',
+    });
+
     const stateMachine = new sfn.StateMachine(this, 'DocProcessingStateMachine', {
       definitionBody: DefinitionBody.fromChainable(definition),
       timeout: cdk.Duration.minutes(5),
+      logs: {
+        destination: sfnLogGroup,
+        level: sfn.LogLevel.ALL,
+        includeExecutionData: true,
+      },
     });
 
     // S3 event rule - ignoring the "_translated.docx" suffix  created by the translate lambda
@@ -249,7 +279,7 @@ export class DocProcessingStack extends cdk.Stack {
 
     // SNS Topic for publishing alarm notifications
     const alarmTopic = new sns.Topic(this, 'AlarmTopic', {
-      displayName: 'Infinite Loop Alarm Topic',
+      topicName: 'DocStandardizationStack-AlarmTopic',
     });
 
     // CloudWatch Alarm to monitor Lambda invocations
@@ -266,7 +296,7 @@ export class DocProcessingStack extends cdk.Stack {
 
     // Create a Lambda function that deletes the S3 event rule
     const deleteS3EventRuleLambda = new lambda.Function(this, 'DeleteS3EventRuleLambda', {
-      runtime: lambda.Runtime.PYTHON_3_9,
+      runtime: lambda.Runtime.PYTHON_3_12,
       handler: 'delete_rule.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, 'lambda/delete_rule')),
       environment: {
@@ -278,7 +308,8 @@ export class DocProcessingStack extends cdk.Stack {
 
     deleteS3EventRuleLambda.addToRolePolicy(new iam.PolicyStatement({
       actions: [
-        'events:DeleteRule',      
+        'events:DeleteRule', 
+        'events:DisableRule',     
         'events:RemoveTargets',   
         'events:ListTargetsByRule' 
       ],
