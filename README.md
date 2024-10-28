@@ -147,6 +147,6 @@ If you would like to change the intial folder names on creation, update _createS
 * This code is provided as a sample only and is not production ready. It is up to developers to properly test and maintain any 3rd party dependancies.
 * The produced output may vary in quality based on the model being used and the output language of the document. We still recommended that a human reviews the final output.
 * The LLMs available for use will vary based on region.
-* Amazon Translate does not support every language. You can find a list of supported languages [here](https://docs.aws.amazon.com/translate/latest/dg/what-is-languages.html)
+* Amazon Translate does not support every language. You can find a list of supported languages [here](https://docs.aws.amazon.com/translate/latest/dg/what-is-languages.html).
 
 

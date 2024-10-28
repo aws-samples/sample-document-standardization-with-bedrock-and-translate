@@ -1,0 +1,121 @@
+Run started:2024-10-16 07:56:01.090330
+
+Test results:
+>> Issue: [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
+   Severity: Medium   Confidence: Medium
+   CWE: CWE-377 (https://cwe.mitre.org/data/definitions/377.html)
+   More Info: https://bandit.readthedocs.io/en/1.7.10/plugins/b108_hardcoded_tmp_directory.html
+   Location: ./lib/lambda/bedrock/bedrock_processor.py:40:27
+39	        # Define local paths for temporary file storage
+40	        local_input_path = '/tmp/' + os.path.basename(document_key)
+41	        local_reference_path = '/tmp/' + os.path.basename(reference_key)
+
+--------------------------------------------------
+>> Issue: [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
+   Severity: Medium   Confidence: Medium
+   CWE: CWE-377 (https://cwe.mitre.org/data/definitions/377.html)
+   More Info: https://bandit.readthedocs.io/en/1.7.10/plugins/b108_hardcoded_tmp_directory.html
+   Location: ./lib/lambda/bedrock/bedrock_processor.py:41:31
+40	        local_input_path = '/tmp/' + os.path.basename(document_key)
+41	        local_reference_path = '/tmp/' + os.path.basename(reference_key)
+42	        local_output_path_docx = '/tmp/' + os.path.basename(document_key).replace('.docx', '_corrected.docx')
+
+--------------------------------------------------
+>> Issue: [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
+   Severity: Medium   Confidence: Medium
+   CWE: CWE-377 (https://cwe.mitre.org/data/definitions/377.html)
+   More Info: https://bandit.readthedocs.io/en/1.7.10/plugins/b108_hardcoded_tmp_directory.html
+   Location: ./lib/lambda/bedrock/bedrock_processor.py:42:33
+41	        local_reference_path = '/tmp/' + os.path.basename(reference_key)
+42	        local_output_path_docx = '/tmp/' + os.path.basename(document_key).replace('.docx', '_corrected.docx')
+43	        tmp_dir = "/tmp/output_images"
+
+--------------------------------------------------
+>> Issue: [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
+   Severity: Medium   Confidence: Medium
+   CWE: CWE-377 (https://cwe.mitre.org/data/definitions/377.html)
+   More Info: https://bandit.readthedocs.io/en/1.7.10/plugins/b108_hardcoded_tmp_directory.html
+   Location: ./lib/lambda/bedrock/bedrock_processor.py:43:18
+42	        local_output_path_docx = '/tmp/' + os.path.basename(document_key).replace('.docx', '_corrected.docx')
+43	        tmp_dir = "/tmp/output_images"
+44	
+
+--------------------------------------------------
+>> Issue: [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
+   Severity: Medium   Confidence: Medium
+   CWE: CWE-377 (https://cwe.mitre.org/data/definitions/377.html)
+   More Info: https://bandit.readthedocs.io/en/1.7.10/plugins/b108_hardcoded_tmp_directory.html
+   Location: ./lib/lambda/translate/translate.py:78:30
+77	
+78	            download_path = f'/tmp/{os.path.basename(document_key)}'
+79	            s3.download_file(bucket_name, document_key, download_path)
+
+--------------------------------------------------
+>> Issue: [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
+   Severity: Medium   Confidence: Medium
+   CWE: CWE-377 (https://cwe.mitre.org/data/definitions/377.html)
+   More Info: https://bandit.readthedocs.io/en/1.7.10/plugins/b108_hardcoded_tmp_directory.html
+   Location: ./lib/lambda/translate/translate.py:100:32
+99	            # Save the translated document
+100	            translated_path = f'/tmp/{os.path.basename(document_key)}'
+101	            doc.save(translated_path)
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.7.10/plugins/b101_assert_used.html
+   Location: ./lib/lambda/typing_extensions.py:310:20
+309	                            deduped_pairs.remove(pair)
+310	                    assert not deduped_pairs, deduped_pairs
+311	                    parameters = tuple(new_parameters)
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.7.10/plugins/b101_assert_used.html
+   Location: ./lib/lambda/typing_extensions.py:1183:12
+1182	        def copy_with(self, params):
+1183	            assert len(params) == 1
+1184	            new_type = params[0]
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.7.10/plugins/b101_assert_used.html
+   Location: ./lib/lambda/typing_extensions.py:2827:12
+2826	        def __new__(cls, typename, bases, ns):
+2827	            assert _NamedTuple in bases
+2828	            for base in bases:
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.7.10/plugins/b101_assert_used.html
+   Location: ./lib/lambda/typing_extensions.py:2892:8
+2891	    def _namedtuple_mro_entries(bases):
+2892	        assert NamedTuple in bases
+2893	        return (_NamedTuple,)
+
+--------------------------------------------------
+
+Code scanned:
+	Total lines of code: 2925
+	Total lines skipped (#nosec): 0
+	Total potential issues skipped due to specifically being disabled (e.g., #nosec BXXX): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0
+		Low: 4
+		Medium: 6
+		High: 0
+	Total issues (by confidence):
+		Undefined: 0
+		Low: 0
+		Medium: 6
+		High: 4
+Files skipped (0):

@@ -5,16 +5,13 @@ import json
 import boto3
 from botocore.config import Config
 import os
-import subprocess
 from docx import Document
 from claude_prompt import get_claude_prompt
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
-import zipfile
 import mammoth
 from bs4 import BeautifulSoup
-from io import BytesIO
-from docx.shared import Pt, RGBColor
+from docx.shared import Pt
 import zipfile
 
 
