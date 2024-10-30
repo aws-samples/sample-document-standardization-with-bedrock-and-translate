@@ -1,2 +1,0 @@
-# FILE: bandit.yaml
-exclude_dirs: ['bandit-env', 'node_modules', 'cdk.out']
