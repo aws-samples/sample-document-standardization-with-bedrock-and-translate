@@ -17,9 +17,6 @@ import tempfile
 import shutil
 
 
-
-
-
 # Initialize S3 client
 config = Config(connect_timeout=5, read_timeout=60, retries={"total_max_attempts": 20, "mode": "adaptive"})
 s3_client = boto3.client('s3', config=config)
@@ -38,13 +35,8 @@ def handler(event, context):
         bucket_name = os.environ['INPUT_BUCKET']  
         document_key = event['path']  
         reference_key = 'word_template.docx'  
-        output_bucket = os.environ['OUTPUT_BUCKET']  
-
-        # Define local paths for temporary file storage
-        # local_input_path = '/tmp/' + os.path.basename(document_key)
-        # local_reference_path = '/tmp/' + os.path.basename(reference_key)
-        # local_output_path_docx = '/tmp/' + os.path.basename(document_key).replace('.docx', '_corrected.docx')
-        # tmp_dir = "/tmp/output_images"
+        output_bucket = os.environ['OUTPUT_BUCKET']
+  
         
         with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as temp_input:
             local_input_path = temp_input.name
@@ -52,7 +44,7 @@ def handler(event, context):
         with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as temp_reference:
             local_reference_path = temp_reference.name
         
-        with tempfile.NamedTemporaryFile(delete=False, suffix='_corrected.docx') as temp_output:
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as temp_output:
             local_output_path_docx = temp_output.name
         
         # Create a temporary directory
@@ -102,10 +94,6 @@ def handler(event, context):
         with open(local_output_path_docx, 'rb') as f:
             s3_client.upload_fileobj(f, output_bucket, final_doc_name)
 
-        # # Cleanup local files
-        # os.remove(local_input_path)
-        # os.remove(local_output_path_docx)
-        # os.remove(local_reference_path)
 
         # Clean up temporary files
         os.unlink(local_input_path)

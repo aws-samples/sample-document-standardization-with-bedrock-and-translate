@@ -4,11 +4,8 @@
 import boto3
 import os
 import json
-print("trying to import xml")
-from lxml import etree
-("importext lxml")
 import docx
-
+import tempfile
 
 s3 = boto3.client('s3')
 translate = boto3.client('translate')
@@ -76,9 +73,12 @@ def handler(event, context):
                 continue  
 
             target_language_code = LANGUAGE_CODES[target_folder]
-            source_language_code = LANGUAGE_CODES[language_code]
-
-            download_path = f'/tmp/{os.path.basename(document_key)}'
+            source_language_code = LANGUAGE_CODES[language_code]            
+            
+            # Create a temporary file
+            with tempfile.NamedTemporaryFile(delete=False,  suffix='.docx') as temp_file:
+                download_path = temp_file.name
+            
             s3.download_file(bucket_name, document_key, download_path)
 
             # Load the DOCX file
@@ -100,13 +100,15 @@ def handler(event, context):
                                 paragraph.text = translated_text
 
             # Save the translated document
-            translated_path = f'/tmp/{os.path.basename(document_key)}'
+            with tempfile.NamedTemporaryFile(delete=False,  suffix='.docx') as temp_translated:
+                translated_path = temp_translated.name
+
             doc.save(translated_path)
 
 
             # Upload the translated document to the input bucket under the translaed path
             original_filename_without_doctype = original_filename.split('.')[0]
-            target_key = f'{target_folder}/{original_filename_without_doctype}_translated.docx' # matches the exempted prefix in the s3EventRule
+            target_key = f'{target_folder}/{original_filename_without_doctype}_{language_code}_to_{target_folder}_translated.docx' # matches the exempted prefix in the s3EventRule
             input_bucket = os.environ['INPUT_BUCKET']
             s3.upload_file(
                 translated_path, 
@@ -115,15 +117,20 @@ def handler(event, context):
             )
             
             path_dict = {
-                'name': f'{original_filename_without_doctype}_translated.docx',  
+                'name': f'{original_filename_without_doctype}_{language_code}_to_{target_folder}_translated.docx',  
                 'path': target_key,
                 'language_code': target_language_code
             }
             
             all_files.append(path_dict)
+            os.unlink(translated_path)
+            os.unlink(download_path)
+
 
 
         print(f"Successfully processed and translated {target_key}")
+
+
 
         return {
             'statusCode': 200,

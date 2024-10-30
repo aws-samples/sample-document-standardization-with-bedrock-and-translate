@@ -8,4 +8,7 @@ node_modules
 cdk.out
 
 bandit-env/
-test/
+lib/lambda-layers/
+
+.DS_Store
+
