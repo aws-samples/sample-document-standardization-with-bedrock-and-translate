@@ -64,6 +64,21 @@ export class DocProcessingStack extends cdk.Stack {
     // Enable server-side encryption with AWS-managed key
     const cfnResultTopic = resultTopic.node.defaultChild as sns.CfnTopic;
     cfnResultTopic.kmsMasterKeyId = 'alias/aws/sns';
+
+    // Add a policy to enforce SSL
+    const topicPolicy = new iam.PolicyStatement({
+      effect: iam.Effect.DENY,
+      principals: [new iam.AnyPrincipal()],
+      actions: ['SNS:Publish'],
+      resources: [resultTopic.topicArn],
+      conditions: {
+        'Bool': {
+          'aws:SecureTransport': 'false'
+        }
+      }
+    });
+
+    resultTopic.addToResourcePolicy(topicPolicy);
     
     
     // Define the python-docx Lambda layer
@@ -281,6 +296,21 @@ export class DocProcessingStack extends cdk.Stack {
     const alarmTopic = new sns.Topic(this, 'AlarmTopic', {
       topicName: 'DocStandardizationStack-AlarmTopic',
     });
+
+    // Add a policy to enforce SSL
+    const alarmtopicPolicy = new iam.PolicyStatement({
+      effect: iam.Effect.DENY,
+      principals: [new iam.AnyPrincipal()],
+      actions: ['SNS:Publish'],
+      resources: [alarmTopic.topicArn],
+      conditions: {
+        'Bool': {
+          'aws:SecureTransport': 'false'
+        }
+      }
+    });
+    alarmTopic.addToResourcePolicy(alarmtopicPolicy);
+
 
     // CloudWatch Alarm to monitor Lambda invocations
     const alarm = new cloudwatch.Alarm(this, 'LoopInvocationAlarm', {

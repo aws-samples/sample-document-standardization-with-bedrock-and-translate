@@ -42,10 +42,23 @@ This workflow assumes the following:
 
 ## Deploying the Solution
 1. Clone the repo: ```git clone git@ssh.gitlab.aws.dev:nadhyap/bedrock-blog-post-doc-standardization-pipeline.git```
-2. Run the following commands to deploy the stack 
+2. Download dependancies and create lambda layers
+```sh
+mkdir -p /tmp/lambda_layers
+pip install beautifulsoup4==4.12.3 mammoth==1.8.0 python-docx==1.1.0 -t /tmp/lambda_layers/python
+cd /tmp/lambda_layers
+zip -r beautifulsoup_layer.zip python/beautifulsoup4* python/soupsieve*
+zip -r mammoth_layer.zip python/mammoth*
+zip -r pythondocx_layer.zip python/docx* python/lxml*
+mv *.zip /path/to/your/repo/lib/lambda-layers/
+cd ../..
+rm -rf /tmp/lambda_layers
+
+
+```
+3. Run the following commands to deploy the stack 
 ``` sh
 cd bedrock-blog-post-doc-standardization-pipeline
-npm install
 cdk bootstrap
 cdk deploy
 ```

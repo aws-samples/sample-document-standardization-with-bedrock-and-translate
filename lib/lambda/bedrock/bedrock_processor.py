@@ -13,6 +13,10 @@ import mammoth
 from bs4 import BeautifulSoup
 from docx.shared import Pt
 import zipfile
+import tempfile
+import shutil
+
+
 
 
 
@@ -37,10 +41,23 @@ def handler(event, context):
         output_bucket = os.environ['OUTPUT_BUCKET']  
 
         # Define local paths for temporary file storage
-        local_input_path = '/tmp/' + os.path.basename(document_key)
-        local_reference_path = '/tmp/' + os.path.basename(reference_key)
-        local_output_path_docx = '/tmp/' + os.path.basename(document_key).replace('.docx', '_corrected.docx')
-        tmp_dir = "/tmp/output_images"
+        # local_input_path = '/tmp/' + os.path.basename(document_key)
+        # local_reference_path = '/tmp/' + os.path.basename(reference_key)
+        # local_output_path_docx = '/tmp/' + os.path.basename(document_key).replace('.docx', '_corrected.docx')
+        # tmp_dir = "/tmp/output_images"
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as temp_input:
+            local_input_path = temp_input.name
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as temp_reference:
+            local_reference_path = temp_reference.name
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='_corrected.docx') as temp_output:
+            local_output_path_docx = temp_output.name
+        
+        # Create a temporary directory
+        tmp_dir = tempfile.mkdtemp(prefix='output_images_')
+        
 
         # Download the DOCX file from S3 to the local path
         s3_client.download_file(bucket_name, document_key, local_input_path)
@@ -79,15 +96,24 @@ def handler(event, context):
             final_doc_name = document_key.replace('_translated.docx', '_corrected.docx')
         else:
             final_doc_name = document_key.replace('.docx', '_corrected.docx')
-
+        
+        
         # Upload the corrected Word document to the specified output S3 bucket
         with open(local_output_path_docx, 'rb') as f:
             s3_client.upload_fileobj(f, output_bucket, final_doc_name)
 
-        # Cleanup local files
-        os.remove(local_input_path)
-        os.remove(local_output_path_docx)
-        os.remove(local_reference_path)
+        # # Cleanup local files
+        # os.remove(local_input_path)
+        # os.remove(local_output_path_docx)
+        # os.remove(local_reference_path)
+
+        # Clean up temporary files
+        os.unlink(local_input_path)
+        os.unlink(local_reference_path)
+        os.unlink(local_output_path_docx)
+
+        # Clean up temporary directory
+        shutil.rmtree(tmp_dir)
 
         return {
             'statusCode': 200,
