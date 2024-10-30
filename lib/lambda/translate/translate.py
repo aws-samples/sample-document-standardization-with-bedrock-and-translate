@@ -4,6 +4,9 @@
 import boto3
 import os
 import json
+print("trying to import xml")
+from lxml import etree
+("importext lxml")
 import docx
 
 

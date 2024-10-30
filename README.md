@@ -42,19 +42,20 @@ This workflow assumes the following:
 
 ## Deploying the Solution
 1. Clone the repo: ```git clone git@ssh.gitlab.aws.dev:nadhyap/bedrock-blog-post-doc-standardization-pipeline.git```
-2. Download dependancies and create lambda layers
+2. Use Docker to download dependancies and create the needed lambda layers. Make sure docker is running before running the following 
+   commands:
 ```sh
-mkdir -p /tmp/lambda_layers
-pip install beautifulsoup4==4.12.3 mammoth==1.8.0 python-docx==1.1.0 -t /tmp/lambda_layers/python
-cd /tmp/lambda_layers
-zip -r beautifulsoup_layer.zip python/beautifulsoup4* python/soupsieve*
-zip -r mammoth_layer.zip python/mammoth*
-zip -r pythondocx_layer.zip python/docx* python/lxml*
-mv *.zip /path/to/your/repo/lib/lambda-layers/
-cd ../..
-rm -rf /tmp/lambda_layers
+# docker build --no-cache -t lambda-layer-builder . 
+# docker run -d --name lambda-layers lambda-layer-builder
+# mkdir -p lib/lambda-layers
+# docker cp lambda_layers:/asset/lambda-layers/. lib/lambda-layers/
+# docker stop lambda-layers
+# docker rm lambda-layers
 
-
+docker build -t lambda-layer-builder .
+docker create --name lambda-layer-extractor lambda-layer-builder
+docker cp lambda-layer-extractor:/output/layer.zip ./lib/lambda-layers/layer.zip
+docker rm lambda-layer-extractor
 ```
 3. Run the following commands to deploy the stack 
 ``` sh

@@ -1,25 +1,20 @@
-# Use a linux base image
-FROM amazonlinux:2
+FROM --platform=linux/amd64 public.ecr.aws/lambda/python:3.9
 
-# Install dependencies
-RUN yum install -y curl tar gzip zip
+# Install necessary build tools
+RUN yum install -y gcc libxml2 libxslt libxml2-devel libxslt-devel zip
 
-# Set the working directory
-WORKDIR /workspace
 
-# Download the specified release of Pandoc
-RUN curl -LO https://github.com/jgm/pandoc/releases/download/3.1.13/pandoc-3.1.13-linux-amd64.tar.gz
+# Prepare the target directory for the Lambda Layer
+WORKDIR /python
 
-# Extract the downloaded tar.gz file
-RUN tar -xzf pandoc-3.1.13-linux-amd64.tar.gz
+# Upgrade pip and install packages using the requirements file
+COPY requirements.txt .
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt -t /python/python/lib/python3.9/site-packages/
 
-# Create the necessary Lambda layer directory structure and move pandoc binary
-RUN mkdir -p pandoc-layer/bin && mv pandoc-3.1.13/bin/pandoc pandoc-layer/bin/
+# Package everything into a zip file
+RUN mkdir -p /output && cd /python && zip -r /output/layer.zip .
 
-# Zip the layer contents into /workspace
-RUN cd pandoc-layer && zip -r /workspace/pandoc_layer.zip .
 
-# Don't move to /lib/lambda-layers during build to avoid volume conflicts
-
-# Final runtime command to move zip to the volume-mapped folder
-CMD ["bash", "-c", "mv /workspace/pandoc_layer.zip /lib/lambda-layers/ && echo 'Pandoc layer has been packaged and moved to /lib/lambda-layers'"]
+# Ensure the command does nothing as the zip is already created
+CMD echo "Layer packaged"

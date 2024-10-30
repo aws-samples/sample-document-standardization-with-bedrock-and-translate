@@ -83,19 +83,19 @@ export class DocProcessingStack extends cdk.Stack {
     
     // Define the python-docx Lambda layer
     const pythondocx_layer = new lambda.LayerVersion(this, 'PythonDocxLayer', {
-      code: lambda.Code.fromAsset('lib/lambda-layers/pythondocx_layer.zip'), 
+      code: lambda.Code.fromAsset('lib/lambda-layers/layer.zip'), 
       compatibleRuntimes: [lambda.Runtime.PYTHON_3_9],
       description: 'A layer for python-docx',
     });
 
     const mammoth_layer = new lambda.LayerVersion(this, 'MammothLayer', {
-      code: lambda.Code.fromAsset(path.join(__dirname, 'lambda-layers/mammoth_layer.zip')),
+      code: lambda.Code.fromAsset(path.join(__dirname, 'lambda-layers/layer.zip')),
       compatibleRuntimes: [lambda.Runtime.PYTHON_3_9], 
       description: 'Mammoth conversion library',
     });
 
     const beatifulsoup_layer = new lambda.LayerVersion(this, 'BS4Layer', {
-      code: lambda.Code.fromAsset(path.join(__dirname, 'lambda-layers/beautifulsoup_layer.zip')),
+      code: lambda.Code.fromAsset(path.join(__dirname, 'lambda-layers/layer.zip')),
       compatibleRuntimes: [lambda.Runtime.PYTHON_3_9], 
       description: 'BS4 library',
     });
