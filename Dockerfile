@@ -3,8 +3,6 @@ FROM --platform=linux/amd64 public.ecr.aws/lambda/python:3.9
 # Install necessary build tools
 RUN yum install -y gcc libxml2 libxslt libxml2-devel libxslt-devel zip
 
-RUN mkdir -p lib/lambda
-
 # Prepare the target directory for the Lambda Layer
 WORKDIR /python
 

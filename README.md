@@ -42,24 +42,19 @@ This workflow assumes the following:
 
 ## Deploying the Solution
 1. Clone the repo: ```git clone git@ssh.gitlab.aws.dev:nadhyap/bedrock-blog-post-doc-standardization-pipeline.git```
-2. Use Docker to download dependancies and create the needed lambda layers. Make sure docker is running before running the following 
+2. Create a directory to store the lambda layer: ```mkdir -p lib/lambda-layers```
+3. Use Docker to download dependancies and create the needed lambda layers. Make sure docker is running before running the following 
    commands:
 ```sh
-# docker build --no-cache -t lambda-layer-builder . 
-# docker run -d --name lambda-layers lambda-layer-builder
-# mkdir -p lib/lambda-layers
-# docker cp lambda_layers:/asset/lambda-layers/. lib/lambda-layers/
-# docker stop lambda-layers
-# docker rm lambda-layers
-
 docker build -t lambda-layer-builder .
 docker create --name lambda-layer-extractor lambda-layer-builder
 docker cp lambda-layer-extractor:/output/layer.zip ./lib/lambda-layers/package-layer.zip
 docker rm lambda-layer-extractor
 ```
-3. Run the following commands to deploy the stack 
+4. Run the following commands to deploy the stack 
 ``` sh
 cd bedrock-blog-post-doc-standardization-pipeline
+npm install
 cdk bootstrap
 cdk deploy
 ```
@@ -78,7 +73,7 @@ In the repo you will find a *word_template.docx*. This document contains the sty
 
 Once you have updated the *word_template.docx* to your liking, **upload it to the *docstandardizationstack-inputbucket* created by CloudFormation**. If you do not want to make any changes, upload this document to the input S3 bucket as-is. Your output documents will follow the formatting specified in *word_template.docx*, regardless of the input format. For example, if your original document has H1 text in black, bold letters but *word_template.docx* specifies that H1 text should be blue and italic, the output doc will have H1 text in blue and italic.
 
-When *word_template.docx* is uploaded for the first time, english, spanish and french path folders will automatically be created in the input bucket.
+When *word_template.docx* is uploaded for the first time, english, spanish and french folders will automatically be created in *docstandardizationstack-inputbucket*.
 
 ![](pictures/input_bucket.png)
 

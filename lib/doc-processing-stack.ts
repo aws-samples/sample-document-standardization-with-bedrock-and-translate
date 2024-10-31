@@ -83,7 +83,7 @@ export class DocProcessingStack extends cdk.Stack {
     
     // Define the python-docx Lambda layer
     const package_layer = new lambda.LayerVersion(this, 'PackageLayer', {
-      code: lambda.Code.fromAsset('lib/lambda-layers/layer.zip'), 
+      code: lambda.Code.fromAsset('lib/lambda-layers/package-layer.zip'), 
       compatibleRuntimes: [lambda.Runtime.PYTHON_3_9],
       description: 'A layer containing python-docx, mammoth and beautiful soup',
     });
