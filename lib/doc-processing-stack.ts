@@ -82,22 +82,10 @@ export class DocProcessingStack extends cdk.Stack {
     
     
     // Define the python-docx Lambda layer
-    const pythondocx_layer = new lambda.LayerVersion(this, 'PythonDocxLayer', {
+    const package_layer = new lambda.LayerVersion(this, 'PackageLayer', {
       code: lambda.Code.fromAsset('lib/lambda-layers/layer.zip'), 
       compatibleRuntimes: [lambda.Runtime.PYTHON_3_9],
-      description: 'A layer for python-docx',
-    });
-
-    const mammoth_layer = new lambda.LayerVersion(this, 'MammothLayer', {
-      code: lambda.Code.fromAsset(path.join(__dirname, 'lambda-layers/layer.zip')),
-      compatibleRuntimes: [lambda.Runtime.PYTHON_3_9], 
-      description: 'Mammoth conversion library',
-    });
-
-    const beatifulsoup_layer = new lambda.LayerVersion(this, 'BS4Layer', {
-      code: lambda.Code.fromAsset(path.join(__dirname, 'lambda-layers/layer.zip')),
-      compatibleRuntimes: [lambda.Runtime.PYTHON_3_9], 
-      description: 'BS4 library',
+      description: 'A layer containing python-docx, mammoth and beautiful soup',
     });
 
     // Translate Lambda function
@@ -105,7 +93,7 @@ export class DocProcessingStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_9,
       handler: 'translate.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, 'lambda/translate')),
-      layers: [pythondocx_layer],
+      layers: [package_layer],
       environment: {
         INPUT_BUCKET: inputBucket.bucketName,
       },
@@ -118,7 +106,7 @@ export class DocProcessingStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_9,
       handler: 'bedrock_processor.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, 'lambda/bedrock')),
-      layers: [pythondocx_layer, mammoth_layer, beatifulsoup_layer],
+      layers: [package_layer],
       environment: {
         OUTPUT_BUCKET: outputBucket.bucketName,
         INPUT_BUCKET: inputBucket.bucketName,

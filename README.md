@@ -54,7 +54,7 @@ This workflow assumes the following:
 
 docker build -t lambda-layer-builder .
 docker create --name lambda-layer-extractor lambda-layer-builder
-docker cp lambda-layer-extractor:/output/layer.zip ./lib/lambda-layers/layer.zip
+docker cp lambda-layer-extractor:/output/layer.zip ./lib/lambda-layers/package-layer.zip
 docker rm lambda-layer-extractor
 ```
 3. Run the following commands to deploy the stack 
