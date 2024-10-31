@@ -14,6 +14,4 @@ RUN pip install --upgrade pip && \
 # Package everything into a zip file
 RUN mkdir -p /output && cd /python && zip -r /output/layer.zip .
 
-
-# Ensure the command does nothing as the zip is already created
 CMD echo "Layer packaged"

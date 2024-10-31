@@ -42,8 +42,12 @@ This workflow assumes the following:
 
 ## Deploying the Solution
 1. Clone the repo: ```git clone git@ssh.gitlab.aws.dev:nadhyap/bedrock-blog-post-doc-standardization-pipeline.git```
-2. Create a directory to store the lambda layer: ```mkdir -p lib/lambda-layers```
-3. Use Docker to download dependancies and create the needed lambda layers. Make sure docker is running before running the following 
+2. Navigate to the root folder and create a directory to store the lambda layer: 
+``` sh
+cd bedrock-blog-post-doc-standardization-pipeline
+mkdir -p lib/lambda-layers
+```
+3. Use Docker to download dependancies and create the needed lambda layer. Make sure docker is running before running the following 
    commands:
 ```sh
 docker build -t lambda-layer-builder .
@@ -53,7 +57,6 @@ docker rm lambda-layer-extractor
 ```
 4. Run the following commands to deploy the stack 
 ``` sh
-cd bedrock-blog-post-doc-standardization-pipeline
 npm install
 cdk bootstrap
 cdk deploy
@@ -109,11 +112,11 @@ There is no cost associated with requesting model access. You will only be charg
 
 Upload a Word .docx file of your choice to the _docstandardizationstack-inputbucket_ S3 bucket. Upload the document in the folder of the original document language. For example, if your document is written in English, upload it in the _english/_ folder.
 
-![](pictures/upload_tone_test.png)
+![](pictures/upload_test.png)
 
-If you do not have a doc ready for testing, you can use the included *tone_test.docx* file. The document will be translated to all specified languages (except the original language of the document), and the translated documents will be added to the corresponding folders in the input bucket with a '_translated' prefix. 
+If you do not have a doc ready for testing, you can use the included *test.docx* file. The document will be translated to all specified languages (except the original language of the document), and the translated documents will be added to the corresponding folders in the input bucket with a '_translated' prefix. 
 
-![](pictures/translated_doc.png)
+![](pictures/french_translation.png)
 
 ![](pictures/spanish_translation.png)
 
@@ -133,7 +136,7 @@ The documents will then be processed with Bedrock and the corrected version will
 
 You will also receive an SNS notification when this process is complete.
 
-As a safety measure, the EventBridge rule that starts this workflow will be disabled if the StepFunction state machine is triggered more than 5 times in 5 minutes. You can increase this limit by updating the 'threshold' property of the **alarm** variable in _doc-processing-stack.ts_. If you do increase the threshold, be sure to save your changes before running `cdk deploy` to push the changes to the deployed stack.
+As a precaution, the EventBridge rule that starts this workflow will be disabled if the StepFunction state machine is triggered more than 5 times in 5 minutes. You can increase this limit by updating the 'threshold' property of the **alarm** variable in _doc-processing-stack.ts_. If you do increase the threshold, be sure to save your changes before running `cdk deploy` to push the changes to the deployed stack.
 
 
 ## Updating the languages
@@ -153,7 +156,7 @@ If you would like to change the intial folder names on creation, update _createS
 ```
 
 ## Limitations
-* This code is provided as a sample only and is not production ready. It is up to developers to properly test and maintain any 3rd party dependancies.
+* This code is provided as a sample only and is not production ready. It is up to developers to properly test and maintain any code and 3rd party dependancies.
 * The produced output may vary in quality based on the model being used and the output language of the document. We still recommended that a human reviews the final output.
 * The LLMs available for use will vary based on region.
 * Amazon Translate does not support every language. You can find a list of supported languages [here](https://docs.aws.amazon.com/translate/latest/dg/what-is-languages.html).
