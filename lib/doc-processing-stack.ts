@@ -111,7 +111,7 @@ export class DocProcessingStack extends cdk.Stack {
         OUTPUT_BUCKET: outputBucket.bucketName,
         INPUT_BUCKET: inputBucket.bucketName,
       },
-      timeout: cdk.Duration.minutes(3),
+      timeout: cdk.Duration.minutes(10),
     });
 
     // Aggregate Lambda function
