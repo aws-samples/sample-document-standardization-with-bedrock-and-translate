@@ -20,8 +20,6 @@ import { DefinitionBody } from 'aws-cdk-lib/aws-stepfunctions';
 import * as logs from 'aws-cdk-lib/aws-logs';
 
 
-
-
 export class DocProcessingStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -234,7 +232,7 @@ export class DocProcessingStack extends cdk.Stack {
 
     const stateMachine = new sfn.StateMachine(this, 'DocProcessingStateMachine', {
       definitionBody: DefinitionBody.fromChainable(definition),
-      timeout: cdk.Duration.minutes(5),
+      timeout: cdk.Duration.minutes(10),
       logs: {
         destination: sfnLogGroup,
         level: sfn.LogLevel.ALL,

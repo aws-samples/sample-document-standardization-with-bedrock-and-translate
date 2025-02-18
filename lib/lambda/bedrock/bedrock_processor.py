@@ -229,15 +229,6 @@ def extract_images_and_replace_with_placeholders(docx_file_path, tmp_dir):
                         # Save the image to the temporary directory
                         with open(image_path, 'wb') as img_file:
                             img_file.write(image_bytes)
-                            
-                        # Upload to S3 if needed
-                        output_bucket = os.environ['OUTPUT_BUCKET'] 
-                        s3_key = f'english/{image_filename}'
-                        s3_client.upload_file(
-                            image_path,
-                            output_bucket,
-                            s3_key
-                        )
 
                         # Store the image information
                         images_info.append({
@@ -258,68 +249,10 @@ def extract_images_and_replace_with_placeholders(docx_file_path, tmp_dir):
     
     # Print debug information
     print(f"Processed {len(processed_rels)} unique images")
-    for info in images_info:
-        print(f"Image: {info['image_path']}, RelID: {info['rel_id']}")
+    # for info in images_info:
+    #     print(f"Image: {info['image_path']}, RelID: {info['rel_id']}")
         
     return images_info
-
-# def extract_images_and_replace_with_placeholders(docx_file_path, tmp_dir):
-#     """Extract images from Word document, save them to a temporary directory, and replace with placeholders."""
-#     doc = Document(docx_file_path)
-#     images_info = []
-#     image_counter = 1
-
-#     # Ensure tmp directory exists
-#     os.makedirs(tmp_dir, exist_ok=True)
-
-#     # Open the DOCX file as a ZIP archive to extract images
-#     with zipfile.ZipFile(docx_file_path, 'r') as docx_zip:
-#         # Loop through all paragraphs and runs to find images (graphics)
-#         for i, paragraph in enumerate(doc.paragraphs):
-#             for run in paragraph.runs:
-#                 if 'graphic' in run.element.xml:
-#                     # Create a placeholder and file path for the image
-#                     placeholder = f'[IMAGE_{image_counter}]'
-#                     image_filename = f'image_{image_counter}.png'
-#                     image_path = os.path.join(tmp_dir, image_filename)
-
-#                     # Extract image data from the DOCX ZIP archive
-#                     for rel in doc.part.rels:
-#                         if "image" in doc.part.rels[rel].target_ref:
-#                             image = doc.part.rels[rel].target_part
-#                             image_bytes = image._blob
-
-#                             # Save the image to the temporary directory
-#                             with open(image_path, 'wb') as img_file:
-#                                 img_file.write(image_bytes)
-                            
-#                             output_bucket = os.environ['OUTPUT_BUCKET'] 
-#                             s3_key = f'english/{image_filename}'
-#                             s3_client.upload_file(
-#                                     image_path,
-#                                     output_bucket,
-#                                     s3_key
-#                                 )
-
-#                             # Store the image information
-#                             images_info.append({
-#                                 "placeholder": placeholder,
-#                                 "image_path": image_path,
-#                                 "paragraph_index": i
-#                             })
-
-#                             # Replace the image with a placeholder in the paragraph
-#                             # paragraph.clear()
-#                             # paragraph.add_run(placeholder)
-#                             run.clear()
-#                             run.text = placeholder
-
-#                             image_counter += 1
-#                             break  # Stop after processing one image per run
-
-#     # Save the modified DOCX with placeholders
-#     doc.save(docx_file_path)
-#     return images_info
 
 def reinsert_images(docx_file_path, images_info):
     doc = Document(docx_file_path)
@@ -339,52 +272,6 @@ def reinsert_images(docx_file_path, images_info):
                     break
 
     doc.save(docx_file_path)
-
-# def reinsert_images(docx_file_path, images_info):
-#     """Reinsert images in place of placeholders in the Word document."""
-#     doc = Document(docx_file_path)
-#     for image_info in images_info:
-#         placeholder = image_info["placeholder"]
-#         print(f'placeholder : {placeholder}')
-#         image_path = image_info["image_path"]
-#         print(f'image_path : {image_path}')
-#         paragraph_index = image_info["paragraph_index"]
-
-#         # Loop through all paragraphs in the document
-#         for paragraph in doc.paragraphs:
-#             # Loop through runs to find the placeholder
-#             for run in paragraph.runs:
-#                 if placeholder in run.text:
-#                     # Clear only this run
-#                     run.clear()
-#                     # Add the image to this specific run
-#                     run.add_picture(image_path)
-#                     break  # Break once we've found and replaced the placeholder
-
-#     # Save the final DOCX file with images reinserted
-#     doc.save(docx_file_path)
-
-# def reinsert_images(docx_file_path, images_info):
-#     """Reinsert images in place of placeholders in the Word document."""
-#     doc = Document(docx_file_path)
-#     for image_info in images_info:
-#         placeholder = image_info["placeholder"]
-#         print(f'placeholder : {placeholder}')
-#         image_path = image_info["image_path"]
-#         print(f'image_path : {image_path}')
-#         paragraph_index = image_info["paragraph_index"]
-
-#         # Loop through all paragraphs in the document
-#         for paragraph in doc.paragraphs:
-#             # Check if the placeholder exists in the paragraph
-#             if placeholder in paragraph.text:
-#                 # Replace the placeholder with the image
-#                 paragraph.clear()  # Clear the placeholder text
-#                 run = paragraph.add_run()  # Create a new run to insert the image
-#                 run.add_picture(image_path)  # Insert the image 
-
-#     # Save the final DOCX file with images reinserted
-#     doc.save(docx_file_path)
 
 def _add_list(element, doc, level, list_type):
     """
@@ -428,43 +315,6 @@ def clear_document_body(doc):
         tbl.getparent().remove(tbl)
 
     return doc
-
-# def load_template_and_add_html_content(template_path, output_path, html_content):
-#     """Load a pre-styled template DOCX, add content from HTML, and save it to S3."""
-    
-#     # Load the pre-styled template DOCX from S3
-#     doc = Document(template_path)
-
-#     # Clear the body of the template
-#     clear_document_body(doc)
-
-#     # Parse the HTML content using BeautifulSoup
-#     soup = BeautifulSoup(html_content, 'html.parser')
-
-#     # HTML-to-DOCX mapping for common elements and styles in the template. Update as need (e.g. to handle tables)
-#     html_to_docx_mapping = {
-#         'p': lambda element, doc: doc.add_paragraph(element.text, style='Normal'),
-#         'ul': lambda element, doc: _add_list(element, doc, list_type='unordered', level=0),
-#         'ol': lambda element, doc: _add_list(element, doc, list_type='ordered', level=0),
-#         'strong': lambda element, doc: _style_text(element, doc.add_paragraph().add_run()), #bold
-#         'b': lambda element, doc: _style_text(element, doc.add_paragraph().add_run()), #bold
-#         'em': lambda element, doc: _style_text(element, doc.add_paragraph().add_run()), #italic
-#         'i': lambda element, doc: _style_text(element, doc.add_paragraph().add_run()) #italic
-#     }
-
-#     # Add all possible header levels
-#     html_to_docx_mapping.update({
-#         f'h{i}': lambda element, doc, i=i: doc.add_paragraph(element.text, style=f'Heading {i}') for i in range(1, 10)
-#     })
-
-#     # Iterate over all HTML elements and apply the mapping
-#     for element in soup:
-#         if element.name in html_to_docx_mapping:
-#             html_to_docx_mapping[element.name](element, doc)
-
-#     # Save the modified document to the output bucket
-#     doc.save(output_path)
-
 
 def add_hyperlink(paragraph, text, url):
     """Add a hyperlink to a paragraph."""
