@@ -7,8 +7,8 @@ Automate your document processing: ingest Word files, translate content, correct
 ## How the Pipeline Works
 1. A user uploads a .docx file to the S3 InputBucket and triggers a PutObject S3 notification. The PutObject S3 notification triggers the *s3EventRule* EventBridge rule.
 2. EventBridge starts the StepFunctions State Machine
-   a. If the uploaded doc is *word_template.docx*, the *createS3folders* function will create S3 folder paths for the languages specified in  _createS3folder.py_. 
-   b. The EventBridge rule will ignore any documents uploaded with the **'_translated.docx'** suffix, as these are the docs we create with the *translate.py* lambda.
+    a) If the uploaded doc is *word_template.docx*, the *createS3folders* function will create S3 folder paths for the languages specified in  _createS3folder.py_. 
+    b) The EventBridge rule will ignore any documents uploaded with the **'_translated.docx'** suffix, as these are the docs we create with the *translate.py* lambda.
 3. The translate lambda determines the language of the original document based on which path the user uploaded the document to, and translates the document into the other languages specified in  _translate.py_.
 4. The Bedrock lambda function attempts to update the doc by:
     1. Using mammoth to transform the input word doc to html format. This keeps the formatting of the pictures, bullet points etc. so that the format of the doc is not changed after the text is passed to Bedrock.
