@@ -16,6 +16,7 @@ Automate your document processing: ingest Word files, translate content, correct
     3. Bedrock's output is transformed back into .docx format. The format of the original doc is preserved in the output doc thanks to the html formatting that was used in the intermediate step.
 5. The results of the map step of the Stepfunction machine will be aggregated in the aggregation lambda.
 6. A success message is sent to subscribers of the SNS topic. If any part of the process failed, a failure message is sent to the same SNS topic.
+7. Once the workflow is complete, the user can download the documents from the OutputBucket.
 
 ![](pictures/arch.png)
 
