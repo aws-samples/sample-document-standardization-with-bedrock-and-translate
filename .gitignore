@@ -1,0 +1,17 @@
+*.js
+!jest.config.js
+*.d.ts
+node_modules
+
+# CDK asset staging directory
+.cdk.staging
+cdk.out
+
+bandit-env/
+bandit.yaml
+bandit_report.txt
+
+lib/lambda-layers/
+
+.DS_Store
+
