@@ -22,7 +22,7 @@ Automate your document processing: ingest Word files, translate content, correct
 
 ## License
 
-This project is licensed under the [MIT-0 License](./LICENSE).
+This project is licensed under the [MIT-0 License]. See the (./LICENSE) file.
 
 ### Acknowledgments
 
@@ -163,4 +163,5 @@ If you would like to change the intial folder names on creation, update _createS
 * The LLMs available for use will vary based on region.
 * Amazon Translate does not support every language. You can find a list of supported languages [here](https://docs.aws.amazon.com/translate/latest/dg/what-is-languages.html).
 
-
+## Security
+See (./CONTRIBUTING) for more information.
