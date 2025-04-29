@@ -164,4 +164,4 @@ If you would like to change the intial folder names on creation, update _createS
 * Amazon Translate does not support every language. You can find a list of supported languages [here](https://docs.aws.amazon.com/translate/latest/dg/what-is-languages.html).
 
 ## Security
-See [CONTRIBUTING](./CONTRIBUTING) for more information.
+See [CONTRIBUTING](./CONTRIBUTING.md) for more information.
