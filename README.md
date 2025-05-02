@@ -41,7 +41,7 @@ This workflow assumes the following:
 * You are using Bedrock models located in us-east-1. If not, change the region in the _processor.py_ file
 
 ## Deploying the Solution
-1. Clone the repo: ```git clone git@ssh.gitlab.aws.dev:nadhyap/bedrock-blog-post-doc-standardization-pipeline.git```
+1. Clone the repo: ```git clone https://github.com/aws-samples/sample-document-standardization-with-bedrock-and-translate.git```
 2. Navigate to the root folder and create a directory to store the lambda layer: 
 ``` sh
 cd bedrock-blog-post-doc-standardization-pipeline
