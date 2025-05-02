@@ -42,9 +42,8 @@ This workflow assumes the following:
 
 ## Deploying the Solution
 1. Clone the repo: ```git clone https://github.com/aws-samples/sample-document-standardization-with-bedrock-and-translate.git```
-2. Navigate to the root folder and create a directory to store the lambda layer: 
+2. Create a directory to store the lambda layer: 
 ``` sh
-cd bedrock-blog-post-doc-standardization-pipeline
 mkdir -p lib/lambda-layers
 ```
 3. Use Docker to download dependancies and create the needed lambda layer. Make sure docker is running before running the following 
